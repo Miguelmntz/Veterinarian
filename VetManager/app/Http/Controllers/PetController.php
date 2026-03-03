@@ -27,9 +27,22 @@ class PetController extends Controller
     /**
      * Store a newly created resource in storage.
      */
+
+    //
     public function store(Request $request)
     {
-        //
+        $validated = $request->validate([
+            'owner_id' => 'required|exists:owners,id',
+            'name' => 'required|string',
+            'species' => 'required|string',
+            'raza' => 'nullable|string',
+            'peso' => 'nullable|numeric',
+            'fech_nac' => 'nullable|date',
+        ]);
+
+        $pet = Pet::create($validated);
+
+        return response()->json($pet, 201);
     }
 
     /**
@@ -53,7 +66,18 @@ class PetController extends Controller
      */
     public function update(Request $request, Pet $pet)
     {
-        //
+        $validated = $request->validate([
+            'owner_id' => 'required|exists:owners,id',
+            'name' => 'required|string',
+            'species' => 'required|string',
+            'raza' => 'nullable|string',
+            'peso' => 'nullable|numeric',
+            'fech_nac' => 'nullable|date',
+        ]);
+
+        $pet->update($validated);
+
+        return response()->json($pet, 200);
     }
 
     /**
@@ -61,6 +85,7 @@ class PetController extends Controller
      */
     public function destroy(Pet $pet)
     {
-        //
+        $pet->delete();
+        return response()->json(null, 204);
     }
 }

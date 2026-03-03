@@ -12,11 +12,13 @@ return new class extends Migration {
     {
         Schema::create('pets', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('owner_id')->constrained()->cascadeOnDelete();
+
             $table->string('name');
             $table->string('species');
             $table->string('raza');
+            $table->float('peso');
             $table->date('fech_nac');
+            $table->foreignId('owner_id')->constrained();
             $table->timestamps();
         });
     }
