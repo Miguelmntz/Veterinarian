@@ -13,7 +13,8 @@ class OwnerController extends Controller
      */
     public function index()
     {
-        //Listamos todos los dueños y ademas nos traemos las mascotas que este tenga
+        // Devuelvo todos los dueños desde la base de datos.
+        // Uso 'with("pets")' para traerme también sus mascotas asociadas de una vez y optimizar las consultas.
         return Owner::with('pets')->get();
     }
 
@@ -30,7 +31,7 @@ class OwnerController extends Controller
      */
     public function store(Request $request)
     {
-        //Crear un nuevo dueño validandolo
+        // Primero, valido los datos que llegan desde el formulario de React para asegurar que son correctos antes de guardarlos.
         $validate = $request->validate([
             'name' => 'required|string|max:255',
             'email' => 'required|email|unique:owners,email',
@@ -43,18 +44,20 @@ class OwnerController extends Controller
             'pets.*.peso' => 'nullable|numeric',
             'pets.*.fech_nac' => 'nullable|date',
         ]);
+
+        // Uso una transacción de base de datos. Así si falla algo al guardar la mascota, tampoco se guarda el dueño a medias.
         return DB::transaction(function () use ($request) {
-            // Creamos al dueño
+            // Creo el registro del dueño con los datos validados
             $owner = Owner::create($request->only(['name', 'email', 'telefono', 'direccion']));
 
-            // Si hay mascotas, las creamos asociadas al dueño
+            // Si desde React me han enviado mascotas en la creación inicial, las recorro y las asocio al dueño automáticamente
             if ($request->has('pets')) {
                 foreach ($request->pets as $petData) {
                     $owner->pets()->create($petData);
                 }
             }
 
-            // Devolvemos el dueño con sus mascotas cargadas para que React las vea
+            // Devuelvo al frontend el dueño creado, cargando sus relaciones ('pets') para que React actualice el estado sin tener que recargar.
             return response()->json($owner->load('pets'), 201);
         });
     }
@@ -64,7 +67,8 @@ class OwnerController extends Controller
      */
     public function show($id)
     {
-        //Traemos al dueño con las mascotas que tenga
+        // Busco un dueño específico por su ID. Aquí también me traigo sus mascotas para la vista de detalle.
+        // findOrFail() me devuelve un error 404 automáticamente si no existe en la base de datos.
         return Owner::with('pets')->findOrFail($id);
     }
 

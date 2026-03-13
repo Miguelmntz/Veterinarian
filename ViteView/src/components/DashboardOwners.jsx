@@ -9,6 +9,8 @@ const DashboardOwners = () => {
     const [loading, setLoading] = useState(true);
     const [showForm, setShowForm] = useState(false);
 
+    // useEffect se ejecuta solo una vez al cargar el componente (por el array vacío [])
+    // Aquí hago la petición a la API de Laravel para traer los dueños y sus mascotas.
     useEffect(() => {
         axios.get('http://localhost:8000/api/owners')
             .then(res => {
@@ -48,7 +50,8 @@ const DashboardOwners = () => {
 
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                     {owners.map((owner, index) => {
-                        // Forzamos una key completamente inconfundible y única
+                        // Utilizo una key única basada en el ID. Fue un problema al principio porque si no, React se liaba
+                        // al actualizar el estado de una tarjeta en concreto (por ejemplo al añadir una mascota a un dueño).
                         const uniqueKey = owner.id ? `id-${owner.id}` : owner._id ? `_id-${owner._id}` : `idx-${index}-${owner.name}`;
                         return (
                             <OwnerCard

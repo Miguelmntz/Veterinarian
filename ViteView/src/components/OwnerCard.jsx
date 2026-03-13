@@ -3,6 +3,9 @@ import axios from 'axios';
 import { User, Phone, MapPin, Pencil, Trash2 } from 'lucide-react';
 
 const OwnerCard = ({ owner, onUpdateOwner }) => {
+    // Uso estados locales aquí para aislar el formulario. Antes, al intentar añadir una mascota,
+    // se me abrían los formularios en todas las tarjetas de clientes a la vez. Al meter esto en un state
+    // propio y aislarlo visualmente con un modal (showAddForm), solucioné el problema.
     const [showAddForm, setShowAddForm] = useState(false);
     const [editingPetId, setEditingPetId] = useState(null);
     const [nuevaMascota, setNuevaMascota] = useState({
@@ -137,6 +140,8 @@ const OwnerCard = ({ owner, onUpdateOwner }) => {
             </div>
 
             {/* Modal condicional (Crear / Editar) */}
+            {/* Decidí usar pantalla completa con un fondo oscurecido para centrar la atención en añadir/editar la mascota,
+                aislándolo del resto de las tarjetas. */}
             {showAddForm && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 animate-in fade-in duration-200">
                     <div className="bg-white p-6 rounded-2xl shadow-xl w-full max-w-md border border-gray-100 animate-in zoom-in duration-200">

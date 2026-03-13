@@ -12,7 +12,8 @@ class PetController extends Controller
      */
     public function index()
     {
-        //Usanmos el With para traer todos los datos del dueño de una vez
+        // Al recuperar todas las mascotas, llamo también a la relación 'owner' usando with().
+        // Esto evita el problema N+1 queries al renderizar las tablas en React (traigo dueño de una sola vez).
         return Pet::with('owner')->get();
     }
 
@@ -31,6 +32,8 @@ class PetController extends Controller
     //
     public function store(Request $request)
     {
+        // Reglas de validación: quiero asegurar que el dueño existe (exists:owners,id)
+        // y que no puedan meterme campos nulos obligatorios (nombre y especie).
         $validated = $request->validate([
             'owner_id' => 'required|exists:owners,id',
             'name' => 'required|string',
@@ -40,8 +43,10 @@ class PetController extends Controller
             'fech_nac' => 'nullable|date',
         ]);
 
+        // Ya asegurados los datos, creo la mascota en BD.
         $pet = Pet::create($validated);
 
+        // Retorno la mascota creada en formato JSON al front, con código HTTP 201 (Creado).
         return response()->json($pet, 201);
     }
 
@@ -66,6 +71,7 @@ class PetController extends Controller
      */
     public function update(Request $request, Pet $pet)
     {
+        // Para la actualización exijo los mismos datos de validación básica por si los cambian.
         $validated = $request->validate([
             'owner_id' => 'required|exists:owners,id',
             'name' => 'required|string',
@@ -75,8 +81,10 @@ class PetController extends Controller
             'fech_nac' => 'nullable|date',
         ]);
 
+        // Laravel se encarga de guardar los cambios en la BD con el objeto Model $pet recibido por Route Model Binding.
         $pet->update($validated);
 
+        // Envío 200 (OK) en vez de 201 por ser una actualización.
         return response()->json($pet, 200);
     }
 
@@ -85,7 +93,10 @@ class PetController extends Controller
      */
     public function destroy(Pet $pet)
     {
+        // Borramos la mascota de forma directa usando Eloquent ORM.
         $pet->delete();
+
+        // Retornamos 204 (No Content) para avisar de que ha salido bien y ya no hay contenido.
         return response()->json(null, 204);
     }
 }
