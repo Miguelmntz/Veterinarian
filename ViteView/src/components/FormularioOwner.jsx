@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import axios from 'axios';
-import { Save, Plus, Trash2 } from 'lucide-react';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { faSave, faPlus, faTrashAlt } from '@fortawesome/free-solid-svg-icons';
+import Swal from 'sweetalert2';
 
 const FormularioOwner = ({ onOwnerAdded }) => {
     const [nuevoOwner, setNuevoOwner] = useState({
@@ -37,9 +39,9 @@ const FormularioOwner = ({ onOwnerAdded }) => {
             const res = await axios.post('http://localhost:8000/api/owners', nuevoOwner);
             onOwnerAdded(res.data);
             setNuevoOwner({ name: '', email: '', telefono: '', direccion: '', pets: [] });
-            alert("Cliente y mascotas registrados correctamente");
+            Swal.fire({ icon: 'success', title: '¡Éxito!', text: 'Cliente y mascotas registrados correctamente' });
         } catch (error) {
-            alert("Error: " + (error.response?.data?.message || "Error al guardar"));
+            Swal.fire({ icon: 'error', title: 'Oops...', text: error.response?.data?.message || 'Error al guardar' });
         }
     };
 
@@ -57,14 +59,14 @@ const FormularioOwner = ({ onOwnerAdded }) => {
                 <div className="flex justify-between items-center mb-4">
                     <h3 className="font-bold text-gray-700">Mascotas a registrar</h3>
                     <button type="button" onClick={agregarMascotaForm} className="flex items-center gap-1 text-sm bg-indigo-50 text-indigo-600 px-3 py-1 rounded-full hover:bg-indigo-100 transition">
-                        <Plus size={16} /> Añadir Mascota
+                        <FontAwesomeIcon icon={faPlus} /> Añadir Mascota
                     </button>
                 </div>
 
                 {nuevoOwner.pets.map((pet, index) => (
                     <div key={index} className="bg-gray-50 p-4 rounded-xl mb-4 border border-gray-200 relative">
                         <button type="button" onClick={() => eliminarMascotaForm(index)} className="absolute top-2 right-2 text-red-400 hover:text-red-600">
-                            <Trash2 size={18} />
+                            <FontAwesomeIcon icon={faTrashAlt} />
                         </button>
 
                         {/* Fila 1: Nombre y Especie */}
@@ -116,7 +118,7 @@ const FormularioOwner = ({ onOwnerAdded }) => {
             </div>
 
             <button type="submit" className="mt-6 bg-green-600 text-white px-4 py-3 rounded-xl w-full font-bold flex items-center justify-center gap-2 hover:bg-green-700 transition shadow-md">
-                <Save size={20} /> Guardar Cliente y Mascotas
+                <FontAwesomeIcon icon={faSave} /> Guardar Cliente y Mascotas
             </button>
         </form>
     );

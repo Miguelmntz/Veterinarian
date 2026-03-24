@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import axios from 'axios';
-import { Dog } from 'lucide-react';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { faDog } from '@fortawesome/free-solid-svg-icons';
 import FormularioOwner from './FormularioOwner';
 import OwnerCard from './OwnerCard';
 
@@ -36,7 +37,7 @@ const DashboardOwners = () => {
             <div className="max-w-6xl mx-auto">
                 <header className="flex justify-between items-center mb-10">
                     <h1 className="text-3xl font-bold text-indigo-700 flex items-center gap-2">
-                        <Dog size={32} /> Clinica Veterinaria
+                        <FontAwesomeIcon icon={faDog} /> Clinica Veterinaria
                     </h1>
                     <button
                         onClick={() => setShowForm(!showForm)}

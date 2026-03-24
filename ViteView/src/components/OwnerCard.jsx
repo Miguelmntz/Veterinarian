@@ -1,6 +1,9 @@
 import React, { useState } from 'react';
 import axios from 'axios';
-import { User, Phone, MapPin, Pencil, Trash2 } from 'lucide-react';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { faUser, faPhone, faMapMarkerAlt, faPencilAlt, faTrashAlt, faStethoscope } from '@fortawesome/free-solid-svg-icons';
+import Swal from 'sweetalert2';
+import HistorialMascota from './HistorialMascota';
 
 const OwnerCard = ({ owner, onUpdateOwner }) => {
     // Uso estados locales aquí para aislar el formulario. Antes, al intentar añadir una mascota,
@@ -11,6 +14,9 @@ const OwnerCard = ({ owner, onUpdateOwner }) => {
     const [nuevaMascota, setNuevaMascota] = useState({
         name: '', species: 'Perro', raza: '', peso: '', fech_nac: ''
     });
+
+    // Controlar cuándo se abre el Historial a toda pantalla y qué paciente mirar
+    const [historyPet, setHistoryPet] = useState(null);
 
     const handleSavePet = async () => {
         try {
@@ -44,12 +50,22 @@ const OwnerCard = ({ owner, onUpdateOwner }) => {
             setEditingPetId(null);
             setNuevaMascota({ name: '', species: 'Perro', raza: '', peso: '', fech_nac: '' });
         } catch (error) {
-            alert("Error al guardar la mascota");
+            Swal.fire({ icon: 'error', title: 'Error', text: 'Error al guardar la mascota' });
         }
     };
 
     const handleDeletePet = async (petId) => {
-        if (!window.confirm("¿Seguro que deseas eliminar esta mascota?")) return;
+        const result = await Swal.fire({
+            title: '¿Eliminar mascota?',
+            text: "Esta acción no se puede deshacer",
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#d33',
+            cancelButtonColor: '#3085d6',
+            confirmButtonText: 'Sí, eliminar',
+            cancelButtonText: 'Cancelar'
+        });
+        if (!result.isConfirmed) return;
 
         try {
             await axios.delete(`http://localhost:8000/api/pets/${petId}`);
@@ -58,7 +74,7 @@ const OwnerCard = ({ owner, onUpdateOwner }) => {
                 pets: owner.pets.filter(p => (p.id || p._id) !== petId)
             });
         } catch (error) {
-            alert("Error al eliminar la mascota");
+            Swal.fire({ icon: 'error', title: 'Error', text: 'Error al eliminar la mascota' });
         }
     };
 
@@ -85,14 +101,14 @@ const OwnerCard = ({ owner, onUpdateOwner }) => {
             {/* Info Propietario */}
             <div className="flex items-center gap-3 mb-4">
                 <div className="bg-indigo-100 p-2 rounded-full text-indigo-600">
-                    <User size={20} />
+                    <FontAwesomeIcon icon={faUser} />
                 </div>
                 <h2 className="text-xl font-bold">{owner.name}</h2>
             </div>
 
             <div className="text-sm text-gray-500 mb-6 space-y-1">
-                <p className="flex items-center gap-2"><Phone size={14} /> {owner.telefono}</p>
-                <p className="flex items-center gap-2"><MapPin size={14} /> {owner.direccion}</p>
+                <p className="flex items-center gap-2"><FontAwesomeIcon icon={faPhone} /> {owner.telefono}</p>
+                <p className="flex items-center gap-2"><FontAwesomeIcon icon={faMapMarkerAlt} /> {owner.direccion}</p>
             </div>
 
             {/* Lista de Mascotas */}
@@ -107,18 +123,25 @@ const OwnerCard = ({ owner, onUpdateOwner }) => {
                                     <span className="text-indigo-500 font-bold mr-2 text-xs">{pet.species}</span>
                                     {/* Botones de acción (ocultos por defecto, visibles al hacer hover) */}
                                     <button
+                                        onClick={() => setHistoryPet(pet)}
+                                        className="text-gray-300 hover:text-indigo-600 transition opacity-0 group-hover:opacity-100"
+                                        title="Ver Historial Médico"
+                                    >
+                                        <FontAwesomeIcon icon={faStethoscope} />
+                                    </button>
+                                    <button
                                         onClick={() => openEditForm(pet)}
                                         className="text-gray-300 hover:text-indigo-500 transition opacity-0 group-hover:opacity-100"
                                         title="Editar mascota"
                                     >
-                                        <Pencil size={14} />
+                                        <FontAwesomeIcon icon={faPencilAlt} />
                                     </button>
                                     <button
                                         onClick={() => handleDeletePet(pet.id || pet._id)}
                                         className="text-gray-300 hover:text-red-500 transition opacity-0 group-hover:opacity-100"
                                         title="Eliminar mascota"
                                     >
-                                        <Trash2 size={14} />
+                                        <FontAwesomeIcon icon={faTrashAlt} />
                                     </button>
                                 </div>
                             </div>
@@ -218,6 +241,13 @@ const OwnerCard = ({ owner, onUpdateOwner }) => {
                     </div>
                 </div>
             )}
+
+            {/* Modal de Historial Clínico Invocada aquí */}
+            <HistorialMascota 
+                isOpen={!!historyPet} 
+                pet={historyPet} 
+                onClose={() => setHistoryPet(null)} 
+            />
         </div>
     );
 };

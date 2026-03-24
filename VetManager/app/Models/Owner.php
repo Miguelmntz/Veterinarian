@@ -15,4 +15,9 @@ class Owner extends Model
     public function pets():HasMany{
         return $this->hasMany(Pet::class);
     }
+
+    public function appointments(): HasMany
+    {
+        return $this->hasMany(Appointment::class);
+    }
 }
