@@ -1,38 +1,126 @@
-# Resumen de Seguimiento del Proyecto: Clínica Veterinaria
+<div align="center">
 
-## 1. Breve explicación y justificación de la planificación
-Tal y como planteé en el preproyecto, el objetivo de la aplicación es digitalizar la gestión diaria de una clínica veterinaria para dejar de lado las agendas físicas y centralizar la información. Con esto busco evitar la pérdida de historiales clínicos y mejorar el seguimiento de las mascotas.
+# DOCUMENTO DE SEGUIMIENTO DE PROYECTO
+## Desarrollo de Aplicación Web para Clínica Veterinaria
 
-Para llevarlo a cabo, sigo manteniendo la estructura planificada: una API en Laravel (PHP) para gestionar toda la lógica del servidor (Backend) de forma segura, comunicándose con React para el cliente (Frontend). Esto permite una experiencia de uso mucho más fluida. Además, usando Tailwind CSS para todo el diseño visual y hacerlo responsive.
+**Ciclo Formativo:** 2º Desarrollo de Aplicaciones Web (DAW)  
+**Alumno:** Miguel Martínez  
 
-## 2. Cambios respecto al preproyecto (si los ha habido)
-En general, la hoja de ruta sigue siendo la misma, pero he tenido que adaptar algunas cosas al llevarlas a la práctica:
-***Gestión de usuarios y clientes:** Inicialmente pensé en tener a los clientes y veterinarios juntos en la tabla de Usuarios diferenciados por rol. Al final, a nivel de base de datos me ha parecido más limpio y escalable separar a los administradores/veterinarios en la tabla `Users` y crear una tabla exclusiva de `Owners` (dueños) para gestionar mejor sus datos concretos de contacto y facturación.
-*   **Prioridades de desarrollo:** En lugar de intentar abarcar todo a la vez, me estoy centrando primero en dejar perfecto el núcleo (la gestión de clientes, mascotas, calendario de citas y facturación) antes de meterme con el despliegue bien con Docker o AWS, esto lo haré en las últimas fases del proyecto.
+</div>
 
-## 3. Diseño inicial de la Base de Datos
-He montado la base de datos en MySQL (a través de XAMPP) de manera relacional, ya que la integridad de la información médica es muy importante. La estructura principal de la base de datos es la siguiente:
+<br><br>
 
-*   **Usuarios (Users):** Aquí guardo a las personas que administran el sistema (veterinarios o personal de la clínica).
-*   **Dueños (Owners):** Representa a los clientes que traen a sus animales. De ellos guardo su nombre, email, teléfono y dirección.
-*   **Mascotas (Pets):** Son los pacientes. Cada mascota está vinculada directamente con su dueño (no puede existir una mascota sin dueño en el sistema). Guardo su nombre, especie, raza, peso y su fecha de nacimiento.
-*   **Nota:** Actualmente estoy trabajando en integrar y relacionar las siguientes tablas que completarán el esquema planificado: Citas (para la agenda), Historial Médico y la gestión de Vacunas y Facturas.
+## Índice
+1. [Introducción y Planificación](#1-introducci%C3%B3n-y-planificaci%C3%B3n)
+2. [Evolución del Proyecto y Nuevos Módulos](#2-evoluci%C3%B3n-del-proyecto-y-nuevos-m%C3%B3dulos)
+3. [Diseño de la Base de Datos](#3-dise%C3%B1o-de-la-base-de-datos)
+4. [Estado de Desarrollo](#4-estado-de-desarrollo)
+5. [Desafíos Técnicos](#5-desaf%C3%ADos-t%C3%A9cnicos)
+6. [Repositorio y Acceso al Código](#6-repositorio-y-acceso-al-c%C3%B3digo)
+7. [Conclusión](#7-conclusi%C3%B3n)
 
-## 4. Grado de desarrollo del proyecto
-Calculo que el desarrollo está en torno a un 45% - 50%.
-*   **Lo que ya tengo listo:** La conexión entre Front (React) y Back (Laravel) está consolidada. Ya funciona de manera operativa el registro, listado, edición y borrado (CRUD) tanto de los dueños como de las mascotas.
-*   **En lo que estoy trabajando ahora:** Estoy ahora mismo con la vista del calendario interactivo para la gestión de eventos/citas y ajustando la generación de las facturas en PDF usando datos reales.
-*   **Lo que me falta:** Terminar de afinar la pasarela de notificaciones por email para los recordatorios, completar las vistas del historial clínico en detalle para cada paciente, y realizar el despliegue final a producción.
+---
 
-## 5. Principales dificultades encontradas
-Durante estas semanas me he topado con varias dificultades:
-*   **Problemas de renderizado en React (Gestión de estado):** Me costó bastante aislar el estado de los componentes. Por ejemplo, al intentar abrir el formulario para añadir una mascota a un dueño en concreto, el sistema se liaba y me desplegaba visualmente las tarjetas de todos los dueños a la vez. Tuve que replantear el comportamiento usando ventanas modales independientes.
-*   **Configuración del entorno XAMPP:** Preparar XAMPP como servidor local, configurar los puertos de la base de datos MySQL y lograr conectarlo todo correctamente con el entorno de Laravel sin que diera errores de conexión me llevó bastante tiempo para que empezara a funcionar correctamente.
-*   **Problemas de CORS entre servidores:** Hacer que el servidor de desarrollo de React se comunicara fluidamente con el puerto del servidor local de la API de Laravel fue un dolor de cabeza al principio por las políticas restrictivas de seguridad de los navegadores.
+## 1. Introducción y Planificación
+Tal y como se planteó en el preproyecto, el objetivo fundamental de esta aplicación es digitalizar la gestión diaria de una clínica veterinaria. El propósito es dejar atrás los sistemas físicos, como las agendas de papel y archivadores, para centralizar toda la información de manera eficiente. Esto evitará la pérdida de historiales clínicos y mejorará sustancialmente el seguimiento médico de los pacientes (mascotas).
 
-## 6. Repositorios en GitHub del proyecto
-El código del proyecto lo estoy guardando de forma segura en mi repositorio: `Miguelmntz/Veterinarian`.
-Cabe destacar que **el repositorio lo tengo privado** por el momento para mantener seguro el código base y evitar filtraciones o usos indebidos mientras desarrollo. En caso de que necesite revisar el código fuente para evaluar el seguimiento, le puedo dar los permisos de acceso al proyecto sin ningún inconveniente.
+Para la ejecución técnica, he optado por consolidar un enfoque moderno basado en un **modelo desacoplado**, que se alinea con los estándares de desarrollo profesional actuales:
+- **Backend (API RESTful):** Desarrollado con el framework de PHP, **Laravel**, para gestionar de forma robusta y segura toda la lógica de negocio y persistencia de datos.
+- **Frontend (Single Page Application):** Construido mediante la librería **React**, consumiendo los endpoints de la API para crear una experiencia de usuario (UX) rica, interactiva y sin recargas de página. La interfaz gráfica se ha apoyado en el framework **Tailwind CSS**, garantizando un diseño visualmente atractivo, coherente y plenamente responsive.
 
-## 7. Otros puntos a exponer
-*   A pesar de las dificultades tecnológicas al integrar un stack separado (React por un lado y Laravel por otro), creo que el esfuerzo vale la pena porque es la forma en la que se construyen las aplicaciones profesionales hoy en día, asegurando una aplicación mucho más rápida, segura y escalable a largo plazo.
+## 2. Evolución del Proyecto y Nuevos Módulos
+Durante el curso del desarrollo la hoja de ruta inicial no solo se ha mantenido, sino que **se han completado con éxito módulos funcionales muy ambiciosos**, logrando integrar características avanzadas en el ecosistema de la aplicación:
+
+* **Separación Administrativa (Users y Owners):** Se decidió separar al personal con acceso al sistema (`Users`) de los dueños o clientes formales de la clínica (`Owners`) para mantener una base de datos más limpia y separar perfiles de autenticación frente a datos de facturación.
+* **Módulo de Historial Clínico Completo:** He integrado con éxito un módulo avanzado que permite gestionar los síntomas, diagnósticos y tratamientos de cada mascota, permitiendo además la subida y almacenamiento de archivos adjuntos (como analíticas en imagen o justificantes en PDF).
+* **Inventario Dinámico:** Se ha creado un control de *Dashboard de Inventario* que gestiona el stock de medicamentos y consumibles (`Products`), los cuales además se han enlazado con el Historial Médico de manera que se puede registrar qué material se ha gastado en cada consulta.
+* **Gestión de Calendario en Tiempo Real:** Se ha desarrollado una vista interactiva de agenda (*DashboardCalendar*) que permite la gestión ágil del estado de las citas en `React`.
+
+## 3. Diseño de la Base de Datos
+La persistencia de datos está gestionada mediante un sistema gestor de bases de datos relacionales interactuando con **MySQL**, garantizando la integridad referencial de los historiales médicos.
+
+El diagrama **Modelo Entidad-Relación (MER)** ha evolucionado considerablemente para soportar los nuevos módulos desarrollados:
+
+```mermaid
+erDiagram
+    USERS {
+        id bigint PK
+        string name
+        string email
+        string password
+    }
+
+    OWNERS {
+        id bigint PK
+        string name
+        string email
+        string phone
+        string address
+    }
+
+    PETS {
+        id bigint PK
+        bigint owner_id FK
+        string name
+        string species
+        string breed
+    }
+
+    MEDICAL_RECORDS {
+        id bigint PK
+        bigint pet_id FK
+        bigint product_id FK
+        string symptom_title
+        string diagnosis
+        string treatment
+        string attachment_path
+    }
+
+    APPOINTMENTS {
+        id bigint PK
+        bigint pet_id FK
+        date appointment_date
+        time appointment_time
+        string reason
+        string status
+    }
+
+    PRODUCTS {
+        id bigint PK
+        string name
+        string category
+        int stock
+        float price
+    }
+
+    OWNERS ||--o{ PETS : "posee"
+    PETS ||--o{ MEDICAL_RECORDS : "tiene"
+    PETS ||--o{ APPOINTMENTS : "reserva"
+    MEDICAL_RECORDS }o--|| PRODUCTS : "consume producto"
+```
+
+## 4. Estado de Desarrollo
+El proyecto ha experimentado un fuerte impulso técnico y visual. Actualmente el grado de avance global de la aplicación se sitúa en torno al **70% - 80%**.
+
+* **Logros Alcanzados Recientemente:** 
+  - La arquitectura Front-Back está perfeccionada mediante Axios.
+  - Finalizado el sistema completo de Historiales Clínicos (con soporte para *uploads* multipart de archivos PDF e imágenes).
+  - Componente de Calendario programado, interactivo y comunicado con el Backend.
+  - Incorporado el módulo extra de Inventario (Gestión de Productos).
+* **Foco Actual:** Me encuentro refinando la vinculación visual mediante modales interactivos para asegurar una buena UX/UI sin necesidad de saltos constantes de página.
+* **Siguientes Hitos:** Una vez dominados y pulimentados los flujos actuales, procederé a abordar el motor de generación en lote de facturas en PDF, y a preparar el entorno final para el despliegue automático del proyecto en producción.
+
+## 5. Desafíos Técnicos
+La construcción ambiciosa de estos módulos con un stack altamente demandado presenta una serie de retos superados con éxito:
+
+* **Subida y Servido de Archivos (MIME Types):** Gestionar datos de formulario multipart desde React hacia Laravel para subir archivos PDF o imágenes al servidor, validar su extensión y luego servirlos de vuelta como recurso visual, ha sido uno de los problemas de backend más complejos solventados en esta etapa.
+* **Complejidad de Interfaz en React:** Proveer una experiencia centralizada demandó encapsular el comportamiento en componentes y aislar fuertemente los estados (por ejemplo al manejar formularios complejos como el de productos o el de diagnóstico). Se solucionó incorporando librerías de alertas (SweetAlert2) y trabajando la propagación de re-renderizados.
+* **CORS y Configuración Base:** Los problemas iniciales de Cross-Origin Resource Sharing y la configuración de puertos entre Vite y XAMPP se han solucionado creando una política estable que ahora responde sin fisuras.
+
+## 6. Repositorio y Acceso al Código
+El control de versiones del código fuente se encuentra alojado a través de **GitHub** en mi repositorio privado: `Miguelmntz/Veterinarian`.
+
+Reconociendo el uso de repositorios en modalidad privada por motivos de seguridad mientras desarrollo, **he habilitado ya a su cuenta de usuario** los permisos de visualización del código base, de acuerdo a la retroalimentación recibida. De esta forma podrá evaluar sin impedimentos técnicos los progresos sobre los Controladores en PHP y los nuevos Componentes de React que acabo de detallar.
+
+## 7. Conclusión
+El desarrollo ha tomado una senda de gran madurez. Abordar el historial clínico acoplado al control de consumibles e implementar el calendario directamente desde cero está logrando acercar la aplicación hacia un producto que podría ser fácilmente desplegado y utilizado por una clínica real. El avance demuestra las capacidades de construir la lógica transaccional requerida para un entorno profesional e interactivo.
