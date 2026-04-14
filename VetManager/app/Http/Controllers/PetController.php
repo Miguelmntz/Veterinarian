@@ -41,7 +41,13 @@ class PetController extends Controller
             'raza' => 'nullable|string',
             'peso' => 'nullable|numeric',
             'fech_nac' => 'nullable|date',
+            'photo' => 'nullable|image|mimes:jpeg,png,jpg,webp|max:2048', // 2MB máximo
         ]);
+
+        if ($request->hasFile('photo')) {
+            $path = $request->file('photo')->store('pets', 'public');
+            $validated['photo_path'] = $path;
+        }
 
         // Ya asegurados los datos, creo la mascota en BD.
         $pet = Pet::create($validated);
@@ -79,7 +85,13 @@ class PetController extends Controller
             'raza' => 'nullable|string',
             'peso' => 'nullable|numeric',
             'fech_nac' => 'nullable|date',
+            'photo' => 'nullable|image|mimes:jpeg,png,jpg,webp|max:2048',
         ]);
+
+        if ($request->hasFile('photo')) {
+            $path = $request->file('photo')->store('pets', 'public');
+            $validated['photo_path'] = $path;
+        }
 
         // Laravel se encarga de guardar los cambios en la BD con el objeto Model $pet recibido por Route Model Binding.
         $pet->update($validated);

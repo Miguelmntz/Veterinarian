@@ -1,12 +1,13 @@
 import React, { useState } from 'react';
 import DashboardOwners from './components/DashboardOwners';
 import DashboardCalendar from './components/DashboardCalendar';
+import DashboardHome from './components/DashboardHome';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faCalendarAlt, faUsers, faBoxOpen, faDog } from '@fortawesome/free-solid-svg-icons';
+import { faCalendarAlt, faUsers, faBoxOpen, faDog, faHome } from '@fortawesome/free-solid-svg-icons';
 import DashboardInventory from './components/DashboardInventory';
 
 function App() {
-  const [currentView, setCurrentView] = useState('owners');
+  const [currentView, setCurrentView] = useState('home');
 
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
@@ -17,6 +18,12 @@ function App() {
             <FontAwesomeIcon icon={faDog} /> VetManager
           </h1>
           <div className="flex space-x-4">
+            <button 
+              onClick={() => setCurrentView('home')}
+              className={`flex items-center gap-2 px-4 py-2 rounded-lg transition ${currentView === 'home' ? 'bg-indigo-800 font-bold' : 'hover:bg-indigo-600'}`}
+            >
+              <FontAwesomeIcon icon={faHome} /> Inicio
+            </button>
             <button 
               onClick={() => setCurrentView('owners')}
               className={`flex items-center gap-2 px-4 py-2 rounded-lg transition ${currentView === 'owners' ? 'bg-indigo-800 font-bold' : 'hover:bg-indigo-600'}`}
@@ -41,6 +48,7 @@ function App() {
 
       <main className="flex-1 w-full mt-6 pb-10">
         <div className="max-w-7xl mx-auto w-full px-4">
+          {currentView === 'home' && <DashboardHome onNavigate={setCurrentView} />}
           {currentView === 'owners' && <DashboardOwners />}
           {currentView === 'calendar' && <DashboardCalendar />}
           {currentView === 'inventory' && <DashboardInventory />}

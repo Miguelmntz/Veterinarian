@@ -13,6 +13,7 @@ const DashboardInventory = () => {
     // Estados para controlar la ventana modal emergente de edición/creación
     const [isFormOpen, setIsFormOpen] = useState(false);
     const [editingProduct, setEditingProduct] = useState(null);
+    const [search, setSearch] = useState('');
 
     // Nada más se monte mi componente Inventory, pido al Backend que me dé el catálogo actual en crudo
     useEffect(() => {
@@ -99,12 +100,21 @@ const DashboardInventory = () => {
                 <h2 className="text-2xl font-bold text-gray-800 flex items-center gap-3">
                     <FontAwesomeIcon icon={faBoxOpen} className="text-indigo-600" /> Inventario de Clínica
                 </h2>
-                <button 
-                    onClick={openNewForm}
-                    className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-6 rounded-xl transition shadow-md flex items-center gap-2"
-                >
-                    <FontAwesomeIcon icon={faPlus} /> Añadir Artículo
-                </button>
+                <div className="flex items-center gap-4">
+                    <input 
+                        type="text" 
+                        placeholder="Buscar material o desc..." 
+                        value={search}
+                        onChange={(e) => setSearch(e.target.value)}
+                        className="px-4 py-2 border border-gray-200 rounded-lg w-64 focus:outline-none focus:ring-2 focus:ring-indigo-300 transition shadow-sm"
+                    />
+                    <button 
+                        onClick={openNewForm}
+                        className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-6 rounded-xl transition shadow-md flex items-center gap-2"
+                    >
+                        <FontAwesomeIcon icon={faPlus} /> Añadir Artículo
+                    </button>
+                </div>
             </div>
 
             {loading ? (
@@ -127,7 +137,12 @@ const DashboardInventory = () => {
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-gray-100 bg-white">
-                            {products.map(p => {
+                            {products
+                                .filter(p => 
+                                    p.name.toLowerCase().includes(search.toLowerCase()) || 
+                                    (p.description && p.description.toLowerCase().includes(search.toLowerCase()))
+                                )
+                                .map(p => {
                                 // Variable super útil que avisa si se pasa de límite: pita rojo
                                 const isLowStock = p.stock_quantity <= p.min_stock_alert;
 

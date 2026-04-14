@@ -85,8 +85,19 @@ class OwnerController extends Controller
      */
     public function update(Request $request, Owner $owner)
     {
-        //
-    }
+        // Actualización de Dueños (Clientes)
+        $validated = $request->validate([
+            'name' => 'required|string|max:255',
+            // Ojo: Validar que el email sea único, pero ignoro el ID de este propio dueño para no duplicar error
+            'email' => 'required|email|unique:owners,email,' . $owner->id,
+            'telefono' => 'required|string',
+            'direccion' => 'nullable|string',
+        ]);
+
+        $owner->update($validated);
+
+        // Envío el dueño actualizado a React, con sus mascotas para no romper el Front.
+        return response()->json($owner->load('pets'), 200);    }
 
     /**
      * Remove the specified resource from storage.

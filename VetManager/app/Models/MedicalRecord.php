@@ -9,7 +9,7 @@ class MedicalRecord extends Model
 {
     use HasFactory;
 
-    // Los campos que voy a permitir que se rellenen desde React mediante Axios (cuestión de seguridad)
+    // Los campos que voy a permitir que se rellenen desde React mediante Axios 
     protected $fillable = [
         'pet_id',
         'product_id', // INTEGRADOR CLAVE FASE 3: Material gastado en consulta

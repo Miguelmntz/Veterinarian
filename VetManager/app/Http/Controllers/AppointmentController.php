@@ -4,6 +4,8 @@ namespace App\Http\Controllers;
 
 use App\Models\Appointment;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Mail;
+use App\Mail\AppointmentConfirmed;
 
 class AppointmentController extends Controller
 {
@@ -20,15 +22,26 @@ class AppointmentController extends Controller
             'pet_id'     => 'required|exists:pets,id',
             'title'      => 'required|string|max:255',
             'start_time' => 'required|date',
-            'end_time'   => 'required|date|after_or_equal:start_time',
             'notes'      => 'nullable|string',
             'type'       => 'nullable|string',
             'status'     => 'nullable|in:scheduled,completed,cancelled'
         ]);
 
+        // Verificamos si existe alguna cita a esa misma hora para evitar solapamientos
+        $startParsed = \Carbon\Carbon::parse($request->start_time)->format('Y-m-d H:i:s');
+        if (Appointment::where('start_time', $startParsed)->exists()) {
+            return response()->json(['message' => 'Esta hora ya está reservada por otro paciente.'], 422);
+        }
+
         $appointment = Appointment::create($validated);
         
         $appointment->load(['owner', 'pet']);
+
+        // Fase 3: Disparar notificación por correo al cliente.
+        // Como estamos en entorno local, el email se "enviará" escribiéndose en storage/logs/laravel.log
+        if ($appointment->owner && $appointment->owner->email) {
+            Mail::to($appointment->owner->email)->send(new AppointmentConfirmed($appointment));
+        }
 
         return response()->json($appointment, 201);
     }
@@ -46,11 +59,15 @@ class AppointmentController extends Controller
             'pet_id'     => 'sometimes|exists:pets,id',
             'title'      => 'sometimes|string|max:255',
             'start_time' => 'sometimes|date',
-            'end_time'   => 'sometimes|date|after_or_equal:start_time',
             'notes'      => 'nullable|string',
             'type'       => 'nullable|string',
             'status'     => 'nullable|in:scheduled,completed,cancelled'
         ]);
+
+        $startParsed = \Carbon\Carbon::parse($request->start_time)->format('Y-m-d H:i:s');
+        if (Appointment::where('start_time', $startParsed)->where('id', '!=', $appointment->id)->exists()) {
+            return response()->json(['message' => 'Esta hora ya está reservada por otro paciente.'], 422);
+        }
 
         $appointment->update($validated);
         $appointment->load(['owner', 'pet']);

@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import Swal from 'sweetalert2';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faNotesMedical, faSave, faTrashAlt, faFilePdf, faImage, faFileMedicalAlt, faTimes, faPills } from '@fortawesome/free-solid-svg-icons';
+import { faNotesMedical, faSave, faTrashAlt, faFilePdf, faImage, faFileMedicalAlt, faTimes, faPills, faFileInvoiceDollar } from '@fortawesome/free-solid-svg-icons';
 
 const HistorialMascota = ({ isOpen, onClose, pet }) => {
     // Array donde guardaré todo el historial que me devuelva Laravel
@@ -220,7 +220,19 @@ const HistorialMascota = ({ isOpen, onClose, pet }) => {
                                             </div>
                                         )}
 
-                                        {renderAttachmentLink(record)}
+                                        <div className="flex gap-2">
+                                            {renderAttachmentLink(record)}
+
+                                            <a 
+                                                href={`http://localhost:8000/api/invoices/${record.id}/download`} 
+                                                target="_blank" 
+                                                rel="noreferrer" 
+                                                className="mt-3 inline-flex items-center gap-2 text-sm font-bold bg-green-50 text-green-700 px-4 py-2 rounded-lg hover:bg-green-100 border border-green-200 transition"
+                                            >
+                                                <FontAwesomeIcon icon={faFileInvoiceDollar} />
+                                                Factura (PDF)
+                                            </a>
+                                        </div>
                                     </div>
                                 ))}
                             </div>

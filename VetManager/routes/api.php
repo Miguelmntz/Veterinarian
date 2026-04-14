@@ -22,3 +22,9 @@ Route::apiResource('medical-records', App\Http\Controllers\MedicalRecordControll
 Route::apiResource('products', App\Http\Controllers\ProductController::class);
 // Mi apaño rápido al API para restar stock con un clic (saltándome el hacer un PUT a lo bruto de toda la ficha entera de campos)
 Route::post('products/{id}/consume', [App\Http\Controllers\ProductController::class, 'consumeStock']);
+
+// Fase 3: Ruta de Facturación (descargar PDF)
+Route::get('invoices/{medicalRecordId}/download', [App\Http\Controllers\InvoiceController::class, 'generateInvoice']);
+
+// Fase 3: Ruta para las estadísticas globales (Home Dashboard)
+Route::get('dashboard', [App\Http\Controllers\DashboardController::class, 'getMetrics']);

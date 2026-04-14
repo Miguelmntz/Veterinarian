@@ -11,7 +11,7 @@ class Pet extends Model
 {
     use HasFactory;
 
-    protected $fillable = ['owner_id', 'name', 'species', 'raza', 'peso', 'fech_nac'];
+    protected $fillable = ['owner_id', 'name', 'species', 'raza', 'peso', 'fech_nac', 'photo_path'];
 
     public function owner(): BelongsTo
     {
