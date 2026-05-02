@@ -13,8 +13,8 @@ class OwnerController extends Controller
      */
     public function index()
     {
-        // Devuelvo todos los dueños desde la base de datos.
-        // Uso 'with("pets")' para traerme también sus mascotas asociadas de una vez y optimizar las consultas.
+        // Recuperación de todos los registros de propietarios.
+        // Se implementa Eager Loading con 'with("pets")' para pre-cargar las relaciones y prevenir consultas N+1.
         return Owner::with('pets')->get();
     }
 
@@ -31,7 +31,7 @@ class OwnerController extends Controller
      */
     public function store(Request $request)
     {
-        // Primero, valido los datos que llegan desde el formulario de React para asegurar que son correctos antes de guardarlos.
+        // Validación del payload entrante para asegurar la integridad de los datos antes de la persistencia.
         $validate = $request->validate([
             'name' => 'required|string|max:255',
             'email' => 'required|email|unique:owners,email',
@@ -45,19 +45,29 @@ class OwnerController extends Controller
             'pets.*.fech_nac' => 'nullable|date',
         ]);
 
-        // Uso una transacción de base de datos. Así si falla algo al guardar la mascota, tampoco se guarda el dueño a medias.
+        // Implementación de transacción de base de datos para garantizar la atomicidad de las operaciones relacionadas.
         return DB::transaction(function () use ($request) {
-            // Creo el registro del dueño con los datos validados
+            // Persistencia del nuevo registro de propietario con los datos validados.
             $owner = Owner::create($request->only(['name', 'email', 'telefono', 'direccion']));
 
-            // Si desde React me han enviado mascotas en la creación inicial, las recorro y las asocio al dueño automáticamente
+            // Fase 6: Aprovisionamiento automático de la cuenta de usuario para el portal de clientes.
+            \App\Models\User::firstOrCreate(
+                ['email' => $owner->email],
+                [
+                    'name' => $owner->name,
+                    'password' => \Illuminate\Support\Facades\Hash::make('password123'),
+                    'role' => 'client'
+                ]
+            );
+
+            // Procesamiento de las relaciones subordinadas (mascotas) incluidas en el payload inicial.
             if ($request->has('pets')) {
                 foreach ($request->pets as $petData) {
                     $owner->pets()->create($petData);
                 }
             }
 
-            // Devuelvo al frontend el dueño creado, cargando sus relaciones ('pets') para que React actualice el estado sin tener que recargar.
+            // Respuesta con el objeto creado y sus relaciones cargadas, permitiendo la actualización del estado del cliente (SPA) de forma óptima.
             return response()->json($owner->load('pets'), 201);
         });
     }
@@ -67,8 +77,8 @@ class OwnerController extends Controller
      */
     public function show($id)
     {
-        // Busco un dueño específico por su ID. Aquí también me traigo sus mascotas para la vista de detalle.
-        // findOrFail() me devuelve un error 404 automáticamente si no existe en la base de datos.
+        // Recuperación de un registro específico mediante su ID, incluyendo sus relaciones (Eager Loading).
+        // Se utiliza findOrFail() para manejar automáticamente excepciones de no encontrado (HTTP 404).
         return Owner::with('pets')->findOrFail($id);
     }
 
@@ -85,10 +95,10 @@ class OwnerController extends Controller
      */
     public function update(Request $request, Owner $owner)
     {
-        // Actualización de Dueños (Clientes)
+        // Actualización de datos del registro de Propietario (Cliente).
         $validated = $request->validate([
             'name' => 'required|string|max:255',
-            // Ojo: Validar que el email sea único, pero ignoro el ID de este propio dueño para no duplicar error
+            // Excepción en la validación de unicidad: Se omite el ID del registro actual para permitir la actualización parcial.
             'email' => 'required|email|unique:owners,email,' . $owner->id,
             'telefono' => 'required|string',
             'direccion' => 'nullable|string',
@@ -96,7 +106,7 @@ class OwnerController extends Controller
 
         $owner->update($validated);
 
-        // Envío el dueño actualizado a React, con sus mascotas para no romper el Front.
+        // Respuesta JSON que incluye la entidad actualizada y sus relaciones requeridas para mantener el estado del frontend.
         return response()->json($owner->load('pets'), 200);    }
 
     /**

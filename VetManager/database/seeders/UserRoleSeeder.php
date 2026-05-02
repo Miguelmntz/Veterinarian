@@ -20,7 +20,7 @@ class UserRoleSeeder extends Seeder
             [
                 'name' => 'Dr. Martín (Veterinario)',
                 'password' => Hash::make('password123'),
-                'role' => 'veterinarian'
+                'role' => 'veterinario'
             ]
         );
 
@@ -29,7 +29,27 @@ class UserRoleSeeder extends Seeder
             [
                 'name' => 'Ana (Recepción)',
                 'password' => Hash::make('password123'),
-                'role' => 'receptionist'
+                'role' => 'recepcionista'
+            ]
+        );
+
+        // Fase 6: Creamos un usuario de Portal de Cliente para que puedan iniciar sesión
+        User::firstOrCreate(
+            ['email' => 'cliente@gmail.com'],
+            [
+                'name' => 'Sara (Dueña de prueba)',
+                'password' => Hash::make('password123'),
+                'role' => 'client'
+            ]
+        );
+
+        // Por supuesto, también le damos de alta en la tabla de Owners físicamente en la clínica
+        \App\Models\Owner::firstOrCreate(
+            ['email' => 'cliente@gmail.com'],
+            [
+                'name' => 'Sara (Dueña de prueba)',
+                'telefono' => '600123456',
+                'direccion' => 'Calle Demo 123'
             ]
         );
     }

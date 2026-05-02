@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
+import api from '../api';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faPaw, faUsers, faBoxOpen, faCalendarDay, faExclamationTriangle, faSync } from '@fortawesome/free-solid-svg-icons';
 
@@ -12,16 +12,18 @@ const DashboardHome = ({ onNavigate }) => {
         low_stock_count: 0
     });
     const [appointments, setAppointments] = useState([]);
+    const [pendingAppointments, setPendingAppointments] = useState([]);
     const [lowStock, setLowStock] = useState([]);
     const [loading, setLoading] = useState(true);
 
     const fetchDashboardData = async () => {
         setLoading(true);
         try {
-            const res = await axios.get('http://localhost:8000/api/dashboard');
+            const res = await api.get('/dashboard');
             setMetrics(res.data.metrics);
             setAppointments(res.data.appointments_today);
             setLowStock(res.data.low_stock_products);
+            setPendingAppointments(res.data.pending_appointments || []);
         } catch (error) {
             console.error("Error fetching dashboard data", error);
         }
@@ -54,6 +56,27 @@ const DashboardHome = ({ onNavigate }) => {
                     <FontAwesomeIcon icon={faSync} /> Actualizar Datos
                 </button>
             </div>
+
+            {/* FASE 7: Alerta Flash de Citas Remotas (Recepción / Vet) */}
+            {pendingAppointments.length > 0 && (
+                <div className="mb-8 bg-gradient-to-r from-orange-50 to-orange-100/50 border border-orange-200 rounded-2xl p-6 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
+                    <div className="flex items-center gap-4">
+                        <div className="bg-orange-100 text-orange-500 min-w-12 h-12 rounded-full flex items-center justify-center text-xl shadow-inner">
+                            <FontAwesomeIcon icon={faExclamationTriangle} />
+                        </div>
+                        <div>
+                            <h3 className="text-lg font-bold text-orange-800 tracking-tight">Citas Pendientes de Aprobación</h3>
+                            <p className="text-orange-700 text-sm font-medium mt-0.5">Tienes <span className="font-black text-orange-900 bg-orange-200/50 px-2 py-0.5 rounded">{pendingAppointments.length}</span> solicitudes de clientes bloqueando el calendario que requieren asignación horaria.</p>
+                        </div>
+                    </div>
+                    <button 
+                        onClick={() => onNavigate && onNavigate('calendar')}
+                        className="bg-orange-500 hover:bg-orange-600 text-white font-bold px-6 py-2.5 rounded-xl shadow-sm transition md:w-max w-full text-center whitespace-nowrap active:scale-95"
+                    >
+                        Ir a Gestionarlas
+                    </button>
+                </div>
+            )}
 
             {/* Tarjetas de Estadísticas Puras (KPIs) */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">

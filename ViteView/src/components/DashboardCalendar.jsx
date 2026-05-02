@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
+import api from '../api';
 import { Calendar, dateFnsLocalizer } from 'react-big-calendar';
 import { format, parse, startOfWeek, getDay } from 'date-fns';
 import { es } from 'date-fns/locale/es';
@@ -23,7 +23,7 @@ const CustomEvent = ({ event }) => {
         <div className="flex items-center gap-1.5 overflow-hidden w-full h-full p-0.5">
             {event.resource.pet?.photo_path ? (
                 <img
-                    src={`http://localhost:8000/storage/${event.resource.pet.photo_path}`}
+                    src={`https://veterinaria.martinezyelamosabogados.es/storage/${event.resource.pet.photo_path}`}
                     alt="avatar"
                     className="w-5 h-5 rounded-full object-cover flex-shrink-0 bg-white"
                 />
@@ -46,7 +46,7 @@ const DashboardCalendar = () => {
     const [selectedDate, setSelectedDate] = useState(null);
     const [selectedEvent, setSelectedEvent] = useState(null);
 
-    // Helper robusto para forzar a Javascript a tragar la fecha como LOCAL ignorando UTC
+    // Función auxiliar para parsear fechas asegurando la zona horaria local e ignorando UTC
     const parseLocal = (dateString) => {
         if (!dateString) return new Date();
         const cleanStr = dateString.split('.')[0].replace('T', ' ').replace('Z', '');
@@ -57,7 +57,7 @@ const DashboardCalendar = () => {
     };
 
     useEffect(() => {
-        axios.get('http://localhost:8000/api/appointments')
+        api.get('/appointments')
             .then(res => {
                 const formattedEvents = res.data.map(apt => ({
                     id: apt.id,
@@ -71,25 +71,25 @@ const DashboardCalendar = () => {
             .catch(err => console.error(err));
     }, []);
 
-    // Cuando hacen clic arrastrando en los cuadros de días vacíos, disparo esto para crear hueco
+    // Controlador de eventos para la selección de celdas vacías del calendario (creación de nueva cita)
     const handleSelectSlot = (slotInfo) => {
         setSelectedDate(slotInfo.start);
-        setSelectedEvent(null); // Limpio esto sí o sí para garantizar abrir siempre un form vacío
+        setSelectedEvent(null); // Reinicio del estado del evento para asegurar que el formulario de creación esté vacío
         setIsModalOpen(true);
     };
 
-    // Si lo que pinchas es una pastilla de color azul (una cita que ya existía)
+    // Controlador de eventos para la selección de una cita existente en el calendario
     const handleSelectEvent = (event) => {
-        setSelectedEvent(event.resource); // Pasamos toda la información de la base de datos
+        setSelectedEvent(event.resource); // Asignación de los datos completos del registro seleccionado
         setSelectedDate(null);
         setIsModalOpen(true);
     };
 
-    // El modal hijo me ha respondido que se guardó guay, actualizo estado sin F5
+    // Actualización del estado local tras la confirmación de guardado desde el componente hijo (FormularioCita)
     const handleSaveCita = (nuevaCita) => {
         const nuevoEvento = {
             id: nuevaCita.id,
-            title: `${nuevaCita.title} - ${nuevaCita.pet.name}`,
+            title: `${nuevaCita.title} - ${nuevaCita.pet?.name || 'Mascota'}`,
             start: parseLocal(nuevaCita.start_time),
             end: new Date(parseLocal(nuevaCita.start_time).getTime() + 60 * 60 * 1000),
             resource: nuevaCita
@@ -97,20 +97,27 @@ const DashboardCalendar = () => {
         setEvents([...events, nuevoEvento]);
     };
 
-    // Lo mismo pero mapeando el mismo id con la info fresca del form de la modal
+    // Actualización del estado local mapeando el ID modificado con los datos actualizados del formulario
     const handleUpdateCita = (citaActualizada) => {
         setEvents(events.map(ev => ev.id === citaActualizada.id ? {
             id: citaActualizada.id,
-            title: `${citaActualizada.title} - ${citaActualizada.pet.name}`,
+            title: `${citaActualizada.title} - ${citaActualizada.pet?.name || 'Mascota'}`,
             start: parseLocal(citaActualizada.start_time),
             end: new Date(parseLocal(citaActualizada.start_time).getTime() + 60 * 60 * 1000),
             resource: citaActualizada
         } : ev));
     };
 
-    // A tomar viento la cita del calendario visualmente
+    // Eliminación visual de la cita en el estado local del calendario
     const handleDeleteCita = (idBorrar) => {
         setEvents(events.filter(ev => ev.id !== idBorrar));
+    };
+
+    // Configuración de estilos condicionales: asignación de color según el estado de la cita (pendiente/confirmada)
+    const eventStyleGetter = (event) => {
+        let backgroundColor = '#4f46e5'; 
+        if (event.resource.status === 'pending') backgroundColor = '#f97316';
+        return { style: { backgroundColor, borderRadius: '8px', border: 'none' } };
     };
 
     return (
@@ -132,6 +139,7 @@ const DashboardCalendar = () => {
                     onNavigate={(newDate) => setDate(newDate)}
                     onSelectSlot={handleSelectSlot}
                     onSelectEvent={handleSelectEvent}
+                    eventPropGetter={eventStyleGetter}
                     messages={{
                         next: ">",
                         previous: "<",

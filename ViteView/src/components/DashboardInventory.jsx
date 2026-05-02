@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
+import api from '../api';
 import Swal from 'sweetalert2';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faBoxOpen, faPlus, faPills, faExclamationTriangle, faPencilAlt, faTrashAlt, faMinus, faEuroSign } from '@fortawesome/free-solid-svg-icons';
@@ -22,7 +22,7 @@ const DashboardInventory = () => {
 
     const fetchProducts = async () => {
         try {
-            const res = await axios.get('http://localhost:8000/api/products');
+            const res = await api.get('/products');
             setProducts(res.data);
             setLoading(false);
         } catch (error) {
@@ -40,7 +40,7 @@ const DashboardInventory = () => {
         }
 
         try {
-            const res = await axios.post(`http://localhost:8000/api/products/${product.id}/consume`, { quantity: 1 });
+            const res = await api.post(`/products/${product.id}/consume`, { quantity: 1 });
             // Re-mapeo el array para buscar la ficha de producto que he alterado e inyectarle la nueva bajada de stock instantáneamente en la web.
             setProducts(products.map(p => p.id === product.id ? res.data.product : p));
         } catch (error) {
@@ -63,7 +63,7 @@ const DashboardInventory = () => {
 
         if (result.isConfirmed) {
             try {
-                await axios.delete(`http://localhost:8000/api/products/${id}`);
+                await api.delete(`/products/${id}`);
                 setProducts(products.filter(p => p.id !== id));
                 Swal.fire({ icon: 'success', title: '¡Fulminado!', text: 'Producto descatalogado y pulverizado permanentemente.' });
             } catch (error) {

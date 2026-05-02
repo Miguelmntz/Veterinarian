@@ -18,9 +18,16 @@ class DashboardController extends Controller
     {
         $today = Carbon::today();
 
-        // Citas programadas estrictamente para el día de hoy
+        // Citas programadas estrictamente para el día de hoy (excluye pendientes de aprobación)
         $appointmentsToday = Appointment::with(['pet', 'owner'])
             ->whereDate('start_time', $today)
+            ->where('status', '!=', 'pending')
+            ->orderBy('start_time', 'asc')
+            ->get();
+
+        // FASE 7: Solicitudes remotas pendientes de confirmación
+        $pendingAppointments = Appointment::with(['pet', 'owner'])
+            ->where('status', 'pending')
             ->orderBy('start_time', 'asc')
             ->get();
 
@@ -36,7 +43,8 @@ class DashboardController extends Controller
                 'low_stock_count' => $lowStockProducts->count(),
             ],
             'appointments_today' => $appointmentsToday,
-            'low_stock_products' => $lowStockProducts
+            'low_stock_products' => $lowStockProducts,
+            'pending_appointments' => $pendingAppointments
         ], 200);
     }
 }

@@ -7,24 +7,24 @@ use Illuminate\Http\Request;
 
 class ProductController extends Controller
 {
-    // Carga todo el almacén de un plumazo. Ideal para rellenar mi Datatable de React.
+    // Recuperación integral del inventario de productos (diseñado para la inicialización de vistas tabulares en el frontend).
     public function index()
     {
-        // Me los traigo en la API ordenados alfabéticamente para que sea fácil buscarlos y listarlos
+        // Retorna la colección serializada ordenando alfabéticamente por nombre para optimizar su indexación visual.
         return response()->json(Product::orderBy('name', 'asc')->get());
     }
 
-    // Registrar una medicina o material nuevo en caja
+    // Registro de un nuevo artículo en el catálogo de inventario.
     public function store(Request $request)
     {
-        // La barrera de seguridad de Laravel actuando de escolta.
-        // Si meten un "TRES" en el precio, escupe error 422 automático. Un chollo.
+        // Implementación de validación estricta de tipos de datos.
+        // Garantiza que el precio y stock sean valores numéricos válidos, retornando HTTP 422 en caso contrario.
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'description' => 'nullable|string',
             'price' => 'required|numeric|min:0',
             'stock_quantity' => 'required|integer|min:0',
-            // Pongo 5 unidades de alerta mínima por defecto para avisar a recepción
+            // Definición del umbral mínimo de stock para la activación de notificaciones de reabastecimiento.
             'min_stock_alert' => 'required|integer|min:0', 
         ]);
 
@@ -32,13 +32,13 @@ class ProductController extends Controller
         return response()->json($product, 201);
     }
 
-    // Visualizar la ficha de un solo producto a nivel individual
+    // Recuperación detallada de un registro de producto individual.
     public function show(Product $product)
     {
         return response()->json($product);
     }
 
-    // Editar la ficha (ej: cambiar el proveedor en info, o han subido los precios en la aduana)
+    // Actualización de los metadatos y valores comerciales de un producto existente.
     public function update(Request $request, Product $product)
     {
         $validated = $request->validate([
@@ -53,9 +53,9 @@ class ProductController extends Controller
         return response()->json($product);
     }
 
-    // Funcionalidad extra que me he maquinado: 
-    // Restar de inventario super rápido simulando que hemos cogido una jeringuilla de la estantería de enfermería,
-    // sin necesidad de enviarle a Axios todo el mamotreto de objeto entero con su descripción.
+    // Operación atómica personalizada para deducción de stock.
+    // Optimiza el consumo de red requiriendo únicamente el ID y la cantidad a descontar,
+    // mitigando la necesidad de actualizar el objeto completo desde el cliente.
     public function consumeStock(Request $request, $id)
     {
         $validated = $request->validate([
@@ -64,20 +64,20 @@ class ProductController extends Controller
 
         $product = Product::findOrFail($id);
 
-        // Control simple: no puedo restar jeringuillas que no tengo físicamente
+        // Validación de integridad de negocio: previene reducciones que generarían inventario negativo.
         if ($product->stock_quantity >= $validated['quantity']) {
             $product->stock_quantity -= $validated['quantity'];
             $product->save();
-            return response()->json(['message' => 'Stock actualizado al instante', 'product' => $product], 200);
+            return response()->json(['message' => 'Actualización de inventario completada exitosamente.', 'product' => $product], 200);
         } else {
-            return response()->json(['message' => 'Lógica física insalvable: no hay suficiente stock material para descontar en el mueble.'], 400);
+            return response()->json(['message' => 'Infracción de reglas de negocio: el stock actual es insuficiente para la deducción solicitada.'], 400);
         }
     }
 
-    // Botón destructivo: para material o medicinas descatalogadas (ej: han prohibido la Aspirina genérica)
+    // Eliminación física del registro del producto en el catálogo (usado para artículos descatalogados).
     public function destroy(Product $product)
     {
         $product->delete();
-        return response()->json(null, 204); // Manda código puro vacío al aire "Borrado Guay"
+        return response()->json(null, 204); // Retorna código de estado HTTP 204 indicando operación de eliminación exitosa.
     }
 }

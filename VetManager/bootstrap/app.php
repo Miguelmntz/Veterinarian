@@ -16,4 +16,8 @@ return Application::configure(basePath: dirname(__DIR__))
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         //
+    })
+    ->withSchedule(function ($schedule) {
+        // Ejecutar los recordatorios de citas cada mañana a las 9:00
+        $schedule->command('app:send-reminders')->dailyAt('09:00');
     })->create();

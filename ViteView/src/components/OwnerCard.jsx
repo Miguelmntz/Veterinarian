@@ -1,25 +1,23 @@
 import React, { useState } from 'react';
-import axios from 'axios';
+import api from '../api';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faUser, faPhone, faMapMarkerAlt, faPencilAlt, faTrashAlt, faStethoscope } from '@fortawesome/free-solid-svg-icons';
 import Swal from 'sweetalert2';
 import HistorialMascota from './HistorialMascota';
 
 const OwnerCard = ({ owner, onUpdateOwner }) => {
-    // Uso estados locales aquí para aislar el formulario. Antes, al intentar añadir una mascota,
-    // se me abrían los formularios en todas las tarjetas de clientes a la vez. Al meter esto en un state
-    // propio y aislarlo visualmente con un modal (showAddForm), solucioné el problema.
+    // Estado local para aislar visualmente el formulario de añadir mascota mediante un modal (showAddForm)
     const [showAddForm, setShowAddForm] = useState(false);
     const [editingPetId, setEditingPetId] = useState(null);
     const [nuevaMascota, setNuevaMascota] = useState({
         name: '', species: 'Perro', raza: '', peso: '', fech_nac: '', photo: null
     });
 
-    // Nuevos estados para editar dueño
+    // Estados para la edición de datos del propietario
     const [showEditOwnerForm, setShowEditOwnerForm] = useState(false);
     const [ownerEdicion, setOwnerEdicion] = useState({ name: '', email: '', telefono: '', direccion: '' });
 
-    // Controlar cuándo se abre el Historial a toda pantalla y qué paciente mirar
+    // Control de visualización del historial clínico del paciente
     const [historyPet, setHistoryPet] = useState(null);
 
     const handleSavePet = async () => {
@@ -36,9 +34,9 @@ const OwnerCard = ({ owner, onUpdateOwner }) => {
             if (nuevaMascota.photo) formData.append('photo', nuevaMascota.photo);
 
             if (editingPetId) {
-                // Modo Edición: spoof del method PUT de Laravel
+                // Modo Edición: simulación del método PUT para Laravel
                 formData.append('_method', 'PUT');
-                const res = await axios.post(`http://localhost:8000/api/pets/${editingPetId}`, formData, {
+                const res = await api.post(`/pets/${editingPetId}`, formData, {
                     headers: { 'Content-Type': 'multipart/form-data' }
                 });
 
@@ -48,7 +46,7 @@ const OwnerCard = ({ owner, onUpdateOwner }) => {
                 });
             } else {
                 // Modo Creación
-                const res = await axios.post('http://localhost:8000/api/pets', formData, {
+                const res = await api.post('/pets', formData, {
                     headers: { 'Content-Type': 'multipart/form-data' }
                 });
 
@@ -81,7 +79,7 @@ const OwnerCard = ({ owner, onUpdateOwner }) => {
         if (!result.isConfirmed) return;
 
         try {
-            await axios.delete(`http://localhost:8000/api/pets/${petId}`);
+            await api.delete(`/pets/${petId}`);
             onUpdateOwner({
                 ...owner,
                 pets: owner.pets.filter(p => (p.id || p._id) !== petId)
@@ -123,7 +121,7 @@ const OwnerCard = ({ owner, onUpdateOwner }) => {
     const handleSaveOwner = async () => {
         try {
             const ownerId = owner.id || owner._id;
-            const res = await axios.put(`http://localhost:8000/api/owners/${ownerId}`, ownerEdicion);
+            const res = await api.put(`/owners/${ownerId}`, ownerEdicion);
             onUpdateOwner(res.data);
             setShowEditOwnerForm(false);
             Swal.fire({ icon: 'success', title: 'Actualizado', text: 'Datos del cliente actualizados', timer: 1500, showConfirmButton: false });
@@ -165,9 +163,9 @@ const OwnerCard = ({ owner, onUpdateOwner }) => {
                             <div key={pet.id || pet._id || petIdx} className="group flex justify-between items-center bg-white p-2 rounded-lg border border-gray-100 text-sm shadow-sm hover:border-indigo-100 transition">
                                 <div className="flex items-center gap-2">
                                     {pet.photo_path ? (
-                                        <img src={`http://localhost:8000/storage/${pet.photo_path}`} alt={pet.name} className="w-8 h-8 rounded-full object-cover border border-gray-200" />
+                                        <img src={`https://veterinaria.martinezyelamosabogados.es/storage/${pet.photo_path}`} alt={pet.name} className="w-8 h-8 rounded-full object-cover border border-gray-200 flex-shrink-0" />
                                     ) : (
-                                        <div className="w-8 h-8 rounded-full bg-indigo-100 text-indigo-500 font-bold flex items-center justify-center text-xs">
+                                        <div className="w-8 h-8 flex-shrink-0 rounded-full bg-indigo-100 text-indigo-500 font-bold flex items-center justify-center text-xs">
                                             {pet.name.charAt(0).toUpperCase()}
                                         </div>
                                     )}
@@ -175,7 +173,7 @@ const OwnerCard = ({ owner, onUpdateOwner }) => {
                                 </div>
                                 <div className="flex items-center gap-2">
                                     <span className="text-indigo-500 font-bold mr-2 text-xs">{pet.species}</span>
-                                    {/* Botones de acción (ocultos por defecto, visibles al hacer hover) */}
+                                    {/* Botones de acción contextuales */}
                                     <button
                                         onClick={() => setHistoryPet(pet)}
                                         className="text-gray-300 hover:text-indigo-600 transition opacity-0 group-hover:opacity-100"
@@ -216,12 +214,11 @@ const OwnerCard = ({ owner, onUpdateOwner }) => {
                 </button>
             </div>
 
-            {/* Modal condicional (Crear / Editar) */}
-            {/* Decidí usar pantalla completa con un fondo oscurecido para centrar la atención en añadir/editar la mascota,
-                aislándolo del resto de las tarjetas. */}
+            {/* Modal de gestión de mascotas (Crear / Editar) */}
+            {/* Diseño a pantalla completa para focalizar la atención del usuario */}
             {showAddForm && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 animate-in fade-in duration-200">
-                    <div className="bg-white p-6 rounded-2xl shadow-xl w-full max-w-md border border-gray-100 animate-in zoom-in duration-200">
+                    <div className="bg-white p-6 rounded-2xl shadow-xl w-full max-w-xl border border-gray-100 animate-in zoom-in duration-200">
                         <h3 className="text-lg font-bold text-indigo-700 mb-4 flex items-center gap-2">
                             {editingPetId ? `Editar mascota de ${owner.name}` : `Añadir mascota a ${owner.name}`}
                         </h3>
@@ -306,11 +303,12 @@ const OwnerCard = ({ owner, onUpdateOwner }) => {
                     </div>
                 </div>
             )}
+            
 
             {/* Modal para Editar Dueño */}
             {showEditOwnerForm && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 animate-in fade-in duration-200">
-                    <div className="bg-white p-6 rounded-2xl shadow-xl w-full max-w-md border border-gray-100 animate-in zoom-in duration-200">
+                    <div className="bg-white p-6 rounded-2xl shadow-xl w-full max-w-xl border border-gray-100 animate-in zoom-in duration-200">
                         <h3 className="text-lg font-bold text-indigo-700 mb-4">Editar Cliente</h3>
                         <div className="space-y-4">
                             <input
@@ -348,7 +346,7 @@ const OwnerCard = ({ owner, onUpdateOwner }) => {
                 </div>
             )}
 
-            {/* Modal de Historial Clínico Invocada aquí */}
+            {/* Componente del Historial Clínico */}
             <HistorialMascota 
                 isOpen={!!historyPet} 
                 pet={historyPet} 

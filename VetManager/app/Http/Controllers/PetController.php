@@ -12,8 +12,8 @@ class PetController extends Controller
      */
     public function index()
     {
-        // Al recuperar todas las mascotas, llamo también a la relación 'owner' usando with().
-        // Esto evita el problema N+1 queries al renderizar las tablas en React (traigo dueño de una sola vez).
+        // Recuperación de registros con carga anticipada (eager loading) de la relación 'owner'.
+        // Implementación requerida para mitigar el problema de consultas N+1 durante la renderización del frontend.
         return Pet::with('owner')->get();
     }
 
@@ -32,8 +32,8 @@ class PetController extends Controller
     //
     public function store(Request $request)
     {
-        // Reglas de validación: quiero asegurar que el dueño existe (exists:owners,id)
-        // y que no puedan meterme campos nulos obligatorios (nombre y especie).
+        // Definición de reglas de validación: Verificación de integridad referencial (exists:owners,id)
+        // y validación de campos obligatorios para prevenir excepciones a nivel de base de datos.
         $validated = $request->validate([
             'owner_id' => 'required|exists:owners,id',
             'name' => 'required|string',
@@ -41,7 +41,7 @@ class PetController extends Controller
             'raza' => 'nullable|string',
             'peso' => 'nullable|numeric',
             'fech_nac' => 'nullable|date',
-            'photo' => 'nullable|image|mimes:jpeg,png,jpg,webp|max:2048', // 2MB máximo
+            'photo' => 'nullable|image|mimes:jpeg,png,jpg,webp|max:10240', // 10MB máximo
         ]);
 
         if ($request->hasFile('photo')) {
@@ -49,10 +49,10 @@ class PetController extends Controller
             $validated['photo_path'] = $path;
         }
 
-        // Ya asegurados los datos, creo la mascota en BD.
+        // Persistencia de la nueva entidad en la base de datos tras superar la validación.
         $pet = Pet::create($validated);
 
-        // Retorno la mascota creada en formato JSON al front, con código HTTP 201 (Creado).
+        // Respuesta JSON con la entidad generada y código de estado HTTP 201 (Created).
         return response()->json($pet, 201);
     }
 
@@ -77,7 +77,7 @@ class PetController extends Controller
      */
     public function update(Request $request, Pet $pet)
     {
-        // Para la actualización exijo los mismos datos de validación básica por si los cambian.
+        // Validación integral del payload de actualización manteniendo las restricciones de integridad originales.
         $validated = $request->validate([
             'owner_id' => 'required|exists:owners,id',
             'name' => 'required|string',
@@ -85,7 +85,7 @@ class PetController extends Controller
             'raza' => 'nullable|string',
             'peso' => 'nullable|numeric',
             'fech_nac' => 'nullable|date',
-            'photo' => 'nullable|image|mimes:jpeg,png,jpg,webp|max:2048',
+            'photo' => 'nullable|image|mimes:jpeg,png,jpg,webp|max:10240',
         ]);
 
         if ($request->hasFile('photo')) {
@@ -93,10 +93,10 @@ class PetController extends Controller
             $validated['photo_path'] = $path;
         }
 
-        // Laravel se encarga de guardar los cambios en la BD con el objeto Model $pet recibido por Route Model Binding.
+        // Actualización del registro en base de datos aprovechando la inyección implícita del modelo (Route Model Binding).
         $pet->update($validated);
 
-        // Envío 200 (OK) en vez de 201 por ser una actualización.
+        // Respuesta JSON con la entidad actualizada y código de estado HTTP 200 (OK).
         return response()->json($pet, 200);
     }
 
@@ -105,10 +105,10 @@ class PetController extends Controller
      */
     public function destroy(Pet $pet)
     {
-        // Borramos la mascota de forma directa usando Eloquent ORM.
+        // Eliminación del registro mediante el ORM Eloquent.
         $pet->delete();
 
-        // Retornamos 204 (No Content) para avisar de que ha salido bien y ya no hay contenido.
+        // Confirmación de eliminación exitosa mediante código de estado HTTP 204 (No Content).
         return response()->json(null, 204);
     }
 }

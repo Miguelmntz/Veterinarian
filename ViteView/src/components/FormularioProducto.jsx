@@ -1,28 +1,28 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
+import api from '../api';
 import Swal from 'sweetalert2';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faSave, faTimes, faBox } from '@fortawesome/free-solid-svg-icons';
 
 const FormularioProducto = ({ isOpen, onClose, initialData, onSave }) => {
-    // Guardo mis datos del formulario aquí
+    // Estado de los campos del formulario
     const [name, setName] = useState('');
     const [description, setDescription] = useState('');
     const [price, setPrice] = useState('');
     const [stock, setStock] = useState('');
-    const [minStock, setMinStock] = useState('5'); // Por defecto pido 5 unidades de alerta mínima al cajero
+    const [minStock, setMinStock] = useState('5'); // Umbral por defecto para alertas de bajo inventario
 
     useEffect(() => {
         if (isOpen) {
             if (initialData) {
-                // MODO EDICIÓN: Me paso el objeto entero padre y autorrelleno el formulario para modificar cómodo
+                // Inicialización en modo edición: Población de campos con datos del producto seleccionado
                 setName(initialData.name);
                 setDescription(initialData.description || '');
                 setPrice(initialData.price);
                 setStock(initialData.stock_quantity);
                 setMinStock(initialData.min_stock_alert);
             } else {
-                // MODO CREAR: Limpio todo el formulario en blanco para una ficha de inventario nueva
+                // Inicialización en modo creación: Reseteo de campos del formulario
                 setName('');
                 setDescription('');
                 setPrice('');
@@ -35,7 +35,7 @@ const FormularioProducto = ({ isOpen, onClose, initialData, onSave }) => {
     const handleSubmit = async (e) => {
         e.preventDefault();
         
-        // Empaqueto los datos según me los exige el validate del Backend en ProductController
+        // Estructuración del payload acorde a las reglas de validación del controlador
         const payload = {
             name,
             description,
@@ -46,17 +46,18 @@ const FormularioProducto = ({ isOpen, onClose, initialData, onSave }) => {
 
         try {
             if (initialData) {
-                // Actualizo el producto metiendo sus variables en el id corrrespondiente por PUT
-                const res = await axios.put(`http://localhost:8000/api/products/${initialData.id}`, payload);
+                // Petición PUT para actualizar registro existente
+                const res = await api.put(`/products/${initialData.id}`, payload);
                 onSave(res.data, true); 
-                Swal.fire({ icon: 'success', title: 'Actualizado', text: 'Datos del artículo actualizados en el inventario.' });
+                onClose();
+                Swal.fire({ icon: 'success', title: 'Actualizado', text: 'Datos del artículo actualizados en el inventario.', timer: 1500, showConfirmButton: false });
             } else {
-                // Creo el producto gordo nuevo desde cero mediante el verbo POST 
-                const res = await axios.post('http://localhost:8000/api/products', payload);
+                // Petición POST para inserción de nuevo registro 
+                const res = await api.post('/products', payload);
                 onSave(res.data, false);
-                Swal.fire({ icon: 'success', title: 'Añadido', text: 'Nuevo material insertado en Vitrina/Almacén.' });
+                onClose();
+                Swal.fire({ icon: 'success', title: 'Añadido', text: 'Nuevo material insertado en Vitrina/Almacén.', timer: 1500, showConfirmButton: false });
             }
-            onClose();
         } catch (error) {
             console.error(error);
             Swal.fire({ icon: 'error', title: 'Error', text: error.response?.data?.message || 'No se pudo guardar la ficha técnica del inventario.' });
@@ -67,7 +68,7 @@ const FormularioProducto = ({ isOpen, onClose, initialData, onSave }) => {
 
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 h-full">
-            <div className="bg-white rounded-xl shadow-xl w-full max-w-lg overflow-hidden shrink-0 animate-in fade-in zoom-in duration-200">
+            <div className="bg-white rounded-xl shadow-xl w-full max-w-xl overflow-hidden shrink-0 animate-in fade-in zoom-in duration-200">
                 <div className="bg-indigo-700 text-white p-5 flex justify-between items-center shadow-sm">
                     <h2 className="text-xl font-bold flex items-center gap-2">
                         <FontAwesomeIcon icon={faBox} /> {initialData ? 'Editar Artículo' : 'Nuevo Artículo en Stock'}

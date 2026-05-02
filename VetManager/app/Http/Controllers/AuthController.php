@@ -25,8 +25,23 @@ class AuthController extends Controller
             ]);
         }
 
+        // Fase 6: Si es un cliente, buscamos si tiene ficha de dueño en la clínica por su email idéntico
+        $owner_id = null;
+        if ($user->role === 'client') {
+            $owner = \App\Models\Owner::where('email', $user->email)->first();
+            if ($owner) {
+                $owner_id = $owner->id;
+            }
+        }
+
         return response()->json([
-            'user' => $user,
+            'user' => [
+                'id' => $user->id,
+                'name' => $user->name,
+                'email' => $user->email,
+                'role' => $user->role,
+                'owner_id' => $owner_id
+            ],
             'token' => $user->createToken('auth_token')->plainTextToken
         ]);
     }

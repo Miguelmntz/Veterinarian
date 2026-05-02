@@ -6,6 +6,7 @@ use App\Models\Appointment;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Mail;
 use App\Mail\AppointmentConfirmed;
+use App\Mail\AppointmentCancelled;
 
 class AppointmentController extends Controller
 {
@@ -24,23 +25,32 @@ class AppointmentController extends Controller
             'start_time' => 'required|date',
             'notes'      => 'nullable|string',
             'type'       => 'nullable|string',
-            'status'     => 'nullable|in:scheduled,completed,cancelled'
+            'status'     => 'nullable|in:pending,scheduled,completed,cancelled'
         ]);
 
-        // Verificamos si existe alguna cita a esa misma hora para evitar solapamientos
-        $startParsed = \Carbon\Carbon::parse($request->start_time)->format('Y-m-d H:i:s');
-        if (Appointment::where('start_time', $startParsed)->exists()) {
-            return response()->json(['message' => 'Esta hora ya está reservada por otro paciente.'], 422);
+        // Verificamos si existe alguna cita a esa misma hora para evitar solapamientos (sólo si no es pendiente)
+        $status = $validated['status'] ?? 'scheduled';
+        if ($status !== 'pending') {
+            $startParsed = \Carbon\Carbon::parse($request->start_time)->format('Y-m-d H:i:s');
+            // Ignorar los pendings de otros a la hora de comprobar huecos
+            if (Appointment::where('start_time', $startParsed)->where('status', '!=', 'pending')->exists()) {
+                return response()->json(['message' => 'Esta hora ya está reservada por otro paciente.'], 422);
+            }
         }
 
         $appointment = Appointment::create($validated);
         
         $appointment->load(['owner', 'pet']);
 
-        // Fase 3: Disparar notificación por correo al cliente.
-        // Como estamos en entorno local, el email se "enviará" escribiéndose en storage/logs/laravel.log
-        if ($appointment->owner && $appointment->owner->email) {
-            Mail::to($appointment->owner->email)->send(new AppointmentConfirmed($appointment));
+        // Sólo mandar correo si la cita se crea ya como "scheduled" directamente (por el Admin)
+        if ($appointment->status === 'scheduled') {
+            if ($appointment->owner && $appointment->owner->email) {
+                try {
+                    Mail::to($appointment->owner->email)->send(new AppointmentConfirmed($appointment));
+                } catch (\Exception $e) {
+                    \Log::error("Error enviando correo de confirmación: " . $e->getMessage());
+                }
+            }
         }
 
         return response()->json($appointment, 201);
@@ -61,22 +71,61 @@ class AppointmentController extends Controller
             'start_time' => 'sometimes|date',
             'notes'      => 'nullable|string',
             'type'       => 'nullable|string',
-            'status'     => 'nullable|in:scheduled,completed,cancelled'
+            'status'     => 'nullable|in:pending,scheduled,completed,cancelled'
         ]);
 
-        $startParsed = \Carbon\Carbon::parse($request->start_time)->format('Y-m-d H:i:s');
-        if (Appointment::where('start_time', $startParsed)->where('id', '!=', $appointment->id)->exists()) {
-            return response()->json(['message' => 'Esta hora ya está reservada por otro paciente.'], 422);
+        $status = $validated['status'] ?? $appointment->status;
+        if ($status !== 'pending') {
+            $startParsed = \Carbon\Carbon::parse($request->start_time)->format('Y-m-d H:i:s');
+            if (Appointment::where('start_time', $startParsed)->where('status', '!=', 'pending')->where('id', '!=', $appointment->id)->exists()) {
+                return response()->json(['message' => 'Esta hora ya está reservada por otro paciente.'], 422);
+            }
         }
 
+        $oldStatus = $appointment->status;
         $appointment->update($validated);
         $appointment->load(['owner', 'pet']);
+
+        // Fase 5/6: Si el admin acaba de aprobar una cita pendiente cambiándola a scheduled, disparamos el correo.
+        if ($oldStatus === 'pending' && $appointment->status === 'scheduled') {
+            if ($appointment->owner && $appointment->owner->email) {
+                try {
+                    Mail::to($appointment->owner->email)->send(new AppointmentConfirmed($appointment));
+                } catch (\Exception $e) {
+                    \Log::error("Error enviando correo de confirmación tras actualización: " . $e->getMessage());
+                }
+            }
+        }
+
+        // NUEVO: Notificar cancelación por cambio de estado
+        if ($oldStatus !== 'cancelled' && $appointment->status === 'cancelled') {
+            if ($appointment->owner && $appointment->owner->email) {
+                try {
+                    Mail::to($appointment->owner->email)->send(new AppointmentCancelled($appointment));
+                } catch (\Exception $e) {
+                    \Log::error("Error enviando correo de cancelación: " . $e->getMessage());
+                }
+            }
+        }
 
         return response()->json($appointment);
     }
 
     public function destroy(Appointment $appointment)
     {
+        $appointment->load(['owner', 'pet']);
+        
+        // Notificamos antes de borrar si era una cita agendada
+        if ($appointment->status === 'scheduled' || $appointment->status === 'pending') {
+             if ($appointment->owner && $appointment->owner->email) {
+                 try {
+                     Mail::to($appointment->owner->email)->send(new AppointmentCancelled($appointment));
+                 } catch (\Exception $e) {
+                     \Log::error("Error enviando correo de cancelación tras borrado: " . $e->getMessage());
+                 }
+             }
+        }
+
         $appointment->delete();
         return response()->json(null, 204);
     }

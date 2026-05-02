@@ -1,16 +1,16 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
+import api from '../api';
 import Swal from 'sweetalert2';
 
 const FormularioCita = ({ isOpen, onClose, onSave, onUpdate, onDelete, initialDate, initialEvent, existingEvents = [] }) => {
     const [owners, setOwners] = useState([]);
     const [loadingOwners, setLoadingOwners] = useState(true);
 
-    // Control del buscador en vivo (ese que monté en lugar del select feo)
+    // Control de estado para buscador dinámico de dueños
     const [searchOwner, setSearchOwner] = useState('');
     const [showDropdown, setShowDropdown] = useState(false);
 
-    // Mis variables de estado para el formulario. Separadas para no liarme al limpiar.
+    // Estados del formulario independiente para facilitar el reset
     const [ownerId, setOwnerId] = useState('');
     const [petId, setPetId] = useState('');
     const [title, setTitle] = useState('');
@@ -18,10 +18,11 @@ const FormularioCita = ({ isOpen, onClose, onSave, onUpdate, onDelete, initialDa
     const [startTimeSlot, setStartTimeSlot] = useState('');
     const [notes, setNotes] = useState('');
     const [type, setType] = useState('consultation'); // consultation, vaccination, surgery
+    const [status, setStatus] = useState('scheduled');
 
     useEffect(() => {
         if (isOpen) {
-            axios.get('http://localhost:8000/api/owners')
+            api.get('/owners')
                 .then(res => {
                     setOwners(res.data);
                     setLoadingOwners(false);
@@ -31,10 +32,10 @@ const FormularioCita = ({ isOpen, onClose, onSave, onUpdate, onDelete, initialDa
                     setLoadingOwners(false);
                 });
 
-            // Al principio me pasaba que al cerrar y abrir la modal se colaban los datos viejos, así lo limpio siempre
+            // Limpieza de estado de búsqueda al inicializar componente
             setSearchOwner('');
 
-            // Funciones de formateo puras que ignoran por completo los husos horarios
+            // Funciones de formateo independientes de la zona horaria
             const formatDateObj = (dateObj) => {
                 const y = dateObj.getFullYear();
                 const m = String(dateObj.getMonth() + 1).padStart(2, '0');
@@ -64,25 +65,28 @@ const FormularioCita = ({ isOpen, onClose, onSave, onUpdate, onDelete, initialDa
             };
 
             if (initialEvent) {
-                // MODO EDICIÓN: El calendario padre me ha pasado un evento. Relleno los inputs.
+                // Inicialización en modo edición: Carga de datos del evento proporcionado
                 setOwnerId(initialEvent.owner_id);
                 setSearchOwner(initialEvent.owner?.name || '');
                 setPetId(initialEvent.pet_id);
                 setTitle(initialEvent.title);
                 setNotes(initialEvent.notes || '');
                 setType(initialEvent.type || 'consultation');
+                // Preservación del estado de la cita 
+                setStatus(initialEvent.status || 'scheduled');
                 
-                // Extraemos la fecha y hora cortando cuajo el string puro sin dejar que JS aplique Zonas Horarias
+                // Extracción de componentes temporales manteniendo formato ISO 8601 local
                 const { fecha, hora } = formatString(initialEvent.start_time);
                 setStartDate(fecha);
                 setStartTimeSlot(hora);
             } else if (initialDate) {
-                // MODO NUEVA CITA: El calendario me pasa solo el día que han pinchado en formato Objeto Date
+                // Inicialización en modo creación: Reset de formulario y carga de fecha seleccionada
                 setOwnerId('');
                 setPetId('');
                 setTitle('');
                 setNotes('');
                 setType('consultation');
+                setStatus('scheduled');
 
                 const { fecha, hora } = formatDateObj(initialDate);
                 setStartDate(fecha);
@@ -91,7 +95,7 @@ const FormularioCita = ({ isOpen, onClose, onSave, onUpdate, onDelete, initialDa
         }
     }, [isOpen, initialDate, initialEvent]);
 
-    // Filtramos sobre el array completo a medida que va escribiendo letras en el buscador
+    // Filtrado dinámico de dueños por coincidencia de nombre o teléfono
     const filteredOwners = owners.filter(o =>
         o.name.toLowerCase().includes(searchOwner.toLowerCase()) ||
         o.telefono?.includes(searchOwner)
@@ -110,15 +114,15 @@ const FormularioCita = ({ isOpen, onClose, onSave, onUpdate, onDelete, initialDa
         timeOptions.push(`${hourStr}:45`);
     }
 
-    // Averiguar qué horas de timeOptions ya están cogidas o solapan ese mismo startDate
+    // Detección de bloques horarios ocupados o solapados
     const occupiedTimes = [];
     const overlappingTimes = [];
 
     existingEvents
-        .filter(ev => ev.resource.start_time.startsWith(startDate)) // Las citas del mismo día (Tanto ISO como plano)
-        .filter(ev => initialEvent ? ev.id !== initialEvent.id : true) // Si estamos editando mi cita, no cuenta como ocupada
+        .filter(ev => ev.resource.start_time.startsWith(startDate)) // Filtrado de eventos concurrentes en la misma fecha
+        .filter(ev => initialEvent ? ev.id !== initialEvent.id : true) // Exclusión del evento actual en validación de disponibilidad
         .forEach(ev => {
-            // Laravel manda 2026-04-09T17:30:00.000000Z por norma
+            // Parseo de timestamp ISO 8601
             const cleanStr = ev.resource.start_time.split('.')[0].replace('T', ' ').replace('Z', '');
             const timePart = cleanStr.split(' ')[1]; 
             if (!timePart) return;
@@ -126,7 +130,7 @@ const FormularioCita = ({ isOpen, onClose, onSave, onUpdate, onDelete, initialDa
             const exactHm = timePart.substring(0, 5); // "17:30"
             occupiedTimes.push(exactHm);
 
-            // Calcular 3 cuartos de hora adicionales visuales (Porque el bloque dura 1h en calendario visual)
+            // Proyección de solapamiento en incrementos de 15 minutos (Duración base: 1 hora)
             const [h, m] = exactHm.split(':').map(Number);
             let mins = h * 60 + m;
             for (let i = 1; i <= 3; i++) {
@@ -138,8 +142,8 @@ const FormularioCita = ({ isOpen, onClose, onSave, onUpdate, onDelete, initialDa
             }
         });
 
-    // Funcion maestra que lanza todo al Backend. O POST o PUT según toque.
-    const handleSubmit = (e) => {
+    // Controlador principal de guardado: Delegación a método POST/PUT según contexto
+    const handleSubmit = async (e) => {
         e.preventDefault();
 
         const citaData = {
@@ -149,37 +153,31 @@ const FormularioCita = ({ isOpen, onClose, onSave, onUpdate, onDelete, initialDa
             start_time: `${startDate} ${startTimeSlot}:00`,
             notes: notes,
             type: type,
-            status: 'scheduled'
+            // Inyección de estado asignado en el formulario
+            status: status 
         };
 
-        if (initialEvent) {
-            // Si hay initialEvent es que estoy editando una cita que venía de props, mando el PUT para modificar
-            // Petición PUT para actualizar
-            axios.put(`http://localhost:8000/api/appointments/${initialEvent.id}`, citaData)
-                .then(res => {
-                    onUpdate(res.data);
-                    onClose();
-                })
-                .catch(err => {
-                    const msj = err.response?.data?.message || 'Error al actualizar la cita.';
-                    Swal.fire({ icon: 'error', title: 'Error', text: msj });
-                });
-        } else {
-            // Si vengo de cero mando el POST limpio para grabar
-            // Petición POST para guardar nueva
-            axios.post('http://localhost:8000/api/appointments', citaData)
-                .then(res => {
-                    onSave(res.data);
-                    onClose();
-                })
-                .catch(err => {
-                    const msj = err.response?.data?.message || 'Error al guardar la cita.';
-                    Swal.fire({ icon: 'error', title: 'Error', text: msj });
-                });
+        try {
+            if (initialEvent) {
+                // Petición PUT para actualizar
+                const res = await api.put(`/appointments/${initialEvent.id}`, citaData);
+                onUpdate(res.data);
+                onClose(); // Cierre de modal previo a notificación visual
+                Swal.fire({ icon: 'success', title: 'Cita Actualizada', text: 'Los datos de la reserva han sido grabados.', timer: 1500, showConfirmButton: false });
+            } else {
+                // Petición POST para guardar nueva
+                const res = await api.post('/appointments', citaData);
+                onSave(res.data);
+                onClose(); // Cierre inmediato de la interfaz modal
+                Swal.fire({ icon: 'success', title: 'Cita Agendada', text: 'Tu cita se ha guardado en el calendario y se ha notificado por correo.', timer: 2500, showConfirmButton: false });
+            }
+        } catch (err) {
+            const msj = err.response?.data?.message || 'Error al procesar la cita.';
+            Swal.fire({ icon: 'error', title: 'Error', text: msj });
         }
     };
 
-    // Botón rojo activado. Borra directo en BD.
+    // Controlador de borrado: Ejecuta eliminación permanente en base de datos
     const handleBorrarCita = async () => {
         const result = await Swal.fire({
             title: '¿Eliminar cita?',
@@ -193,7 +191,7 @@ const FormularioCita = ({ isOpen, onClose, onSave, onUpdate, onDelete, initialDa
         });
 
         if (result.isConfirmed) {
-            axios.delete(`http://localhost:8000/api/appointments/${initialEvent.id}`)
+            api.delete(`/appointments/${initialEvent.id}`)
                 .then(() => {
                     onDelete(initialEvent.id);
                     onClose();
@@ -206,15 +204,15 @@ const FormularioCita = ({ isOpen, onClose, onSave, onUpdate, onDelete, initialDa
     if (!isOpen) return null;
 
     return (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50">
-            <div className="bg-white p-6 rounded-lg shadow-xl w-full max-w-md">
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50 p-4">
+            <div className="bg-white p-6 rounded-lg shadow-xl w-full max-w-2xl">
                 <h2 className="text-xl font-bold mb-4 border-b pb-2 text-indigo-700">
                     {initialEvent ? " Editar Cita" : " Nueva Cita Médica"}
                 </h2>
 
                 <form onSubmit={handleSubmit} className="flex flex-col gap-4">
 
-                    {/* La zona del Buscador que me curré para que sea más funcional */}
+                    {/* Componente de búsqueda interactiva de dueños */}
                     <div className="flex flex-col gap-2 p-3 bg-indigo-50 rounded border border-indigo-100 relative">
                         <label className="text-sm font-bold text-gray-700">Buscar dueño</label>
                         <input
@@ -224,15 +222,15 @@ const FormularioCita = ({ isOpen, onClose, onSave, onUpdate, onDelete, initialDa
                             onChange={(e) => {
                                 setSearchOwner(e.target.value);
                                 setShowDropdown(true);
-                                setOwnerId(''); // Deseleccionar al escribir
-                                setPetId(''); // Resetear mascota también
+                                setOwnerId(''); // Reinicio de selección al modificar término de búsqueda
+                                setPetId(''); // Reseteo en cascada de entidad dependiente
                             }}
                             onFocus={() => setShowDropdown(true)}
-                            onBlur={() => setTimeout(() => setShowDropdown(false), 200)} // Delay para poder pinchar
+                            onBlur={() => setTimeout(() => setShowDropdown(false), 200)} // Retardo intencional para permitir captura de evento click en resultados
                             className="p-2 border rounded bg-white w-full h-10"
                         />
 
-                        {/* Lista de resultados que parece un 'select', si tocas fuera se esconde gracias al 'onBlur' */}
+                        {/* Desplegable de resultados de búsqueda (Auto-ocultable onBlur) */}
                         {showDropdown && searchOwner.length > 0 && (
                             <ul className="absolute top-16 left-0 w-full bg-white border border-gray-200 mt-2 max-h-40 overflow-y-auto rounded shadow-xl z-50">
                                 {loadingOwners && <li className="p-2 text-sm text-gray-500">Cargando...</li>}
@@ -277,7 +275,7 @@ const FormularioCita = ({ isOpen, onClose, onSave, onUpdate, onDelete, initialDa
                         </select>
                     </div>
 
-                    <div className="flex gap-4">
+                    <div className="flex flex-col md:flex-row gap-4">
                         <div className="flex flex-col gap-2 flex-1">
                             <label className="text-sm font-bold text-gray-700">Motivo de la visita</label>
                             <input
@@ -289,7 +287,7 @@ const FormularioCita = ({ isOpen, onClose, onSave, onUpdate, onDelete, initialDa
                                 className="p-2 border rounded bg-gray-50 h-10"
                             />
                         </div>
-                        <div className="flex flex-col gap-2 w-1/3">
+                        <div className="flex flex-col gap-2 w-full md:w-1/4">
                             <label className="text-sm font-bold text-gray-700">Tipo</label>
                             <select
                                 value={type}
@@ -302,9 +300,25 @@ const FormularioCita = ({ isOpen, onClose, onSave, onUpdate, onDelete, initialDa
                                 <option value="emergency">Urgencia</option>
                             </select>
                         </div>
+                        <div className="flex flex-col gap-2 w-full md:w-1/3">
+                            <label className="text-sm font-bold text-gray-700">Estado</label>
+                            <select
+                                value={status}
+                                onChange={(e) => setStatus(e.target.value)}
+                                className={`p-2 border rounded bg-gray-50 h-10 font-semibold focus:ring-2 focus:ring-indigo-500 outline-none
+                                    ${status === 'pending' ? 'text-orange-600 bg-orange-50 border-orange-200' : 
+                                      status === 'scheduled' ? 'text-green-600 bg-green-50 border-green-200' : 'text-gray-700'}`}
+                            >
+                                <option value="pending">⏳ Pendiente</option>
+                                <option value="scheduled">✅ Confirmada</option>
+                                <option value="completed">🏥 Completada</option>
+                                <option value="cancelled">❌ Cancelada</option>
+                            </select>
+                        </div>
                     </div>
 
-                    <div className="flex gap-4">
+
+                    <div className="flex flex-col md:flex-row gap-4">
                         <div className="flex flex-col gap-2 flex-1">
                             <label className="text-sm font-bold text-gray-700">Día de la Cita</label>
                             <input
@@ -365,7 +379,7 @@ const FormularioCita = ({ isOpen, onClose, onSave, onUpdate, onDelete, initialDa
                     </div>
 
                     <div className="flex justify-between mt-4">
-                        {/* Condicional molón: el botón de borrado de la esquina solo sale en el modo de actualización */}
+                        {/* Renderizado condicional: Botón de eliminación exclusivo de modo edición */}
                         {initialEvent ? (
                             <button
                                 type="button"
@@ -375,7 +389,7 @@ const FormularioCita = ({ isOpen, onClose, onSave, onUpdate, onDelete, initialDa
                                 Eliminar
                             </button>
                         ) : (
-                            <div></div> // Espaciador para empujar los otros botones a la derecha
+                            <div></div> // Elemento espaciador para alineación flexbox
                         )}
 
                         <div className="flex gap-2">

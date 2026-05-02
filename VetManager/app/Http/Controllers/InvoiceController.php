@@ -20,7 +20,7 @@ class InvoiceController extends Controller
         $consultationFee = 50.00; 
 
         // Sumar producto si se ha consumido alguno
-        $productCost = $record->product ? clone $record->product->price : 0; // Se asume que el Product tiene $price
+        $productCost = $record->product ? $record->product->price : 0; // Se asume que el Product tiene $price
         
         $totalCost = $consultationFee + $productCost;
         $iva = $totalCost * 0.21;

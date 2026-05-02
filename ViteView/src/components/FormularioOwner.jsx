@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import axios from 'axios';
+import api from '../api';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faSave, faPlus, faTrashAlt } from '@fortawesome/free-solid-svg-icons';
 import Swal from 'sweetalert2';
@@ -13,7 +13,7 @@ const FormularioOwner = ({ onOwnerAdded }) => {
         pets: []
     });
 
-    // Inicializamos la mascota con todos los campos requeridos para tu examen [cite: 2026-02-11]
+    // Inicialización del objeto mascota con campos obligatorios para validación backend
     const agregarMascotaForm = () => {
         setNuevoOwner({
             ...nuevoOwner,
@@ -27,7 +27,7 @@ const FormularioOwner = ({ onOwnerAdded }) => {
         });
     };
 
-    // Función para eliminar una mascota del formulario antes de enviar
+    // Manejador para eliminación local de mascota en array de estado
     const eliminarMascotaForm = (index) => {
         const nuevasPets = nuevoOwner.pets.filter((_, i) => i !== index);
         setNuevoOwner({ ...nuevoOwner, pets: nuevasPets });
@@ -36,7 +36,7 @@ const FormularioOwner = ({ onOwnerAdded }) => {
     const handleSubmit = async (e) => {
         e.preventDefault();
         try {
-            const res = await axios.post('http://localhost:8000/api/owners', nuevoOwner);
+            const res = await api.post('/owners', nuevoOwner);
             onOwnerAdded(res.data);
             setNuevoOwner({ name: '', email: '', telefono: '', direccion: '', pets: [] });
             Swal.fire({ icon: 'success', title: '¡Éxito!', text: 'Cliente y mascotas registrados correctamente' });
