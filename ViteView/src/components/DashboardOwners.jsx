@@ -6,13 +6,10 @@ import FormularioOwner from './FormularioOwner';
 import OwnerCard from './OwnerCard';
 
 const DashboardOwners = () => {
-    const [owners, setOwners] = useState([]);
-    const [loading, setLoading] = useState(true);
-    const [showForm, setShowForm] = useState(false);
-    const [search, setSearch] = useState('');
+    const [currentPage, setCurrentPage] = useState(1);
+    const itemsPerPage = 6;
 
     // Inicialización del componente: Carga inicial de datos
-    // Petición a la API para obtener el listado completo de clientes y mascotas asociadas
     useEffect(() => {
         api.get('/owners')
             .then(res => {
@@ -29,7 +26,6 @@ const DashboardOwners = () => {
 
     const handleUpdateOwner = (updatedOwner, updatedIndex) => {
         if (updatedOwner === null) {
-            // Si llega null, es porque el dueño ha sido eliminado
             setOwners(owners.filter((_, i) => i !== updatedIndex));
         } else {
             setOwners(owners.map((o, i) => i === updatedIndex ? updatedOwner : o));
@@ -37,6 +33,18 @@ const DashboardOwners = () => {
     };
 
     if (loading) return <div className="p-20 text-center font-bold">Cargando...</div>;
+
+    // Filtrado y Paginación
+    const filteredOwners = owners.filter(o => 
+        o.name.toLowerCase().includes(search.toLowerCase()) || 
+        (o.telefono && o.telefono.includes(search)) || 
+        (o.email && o.email.toLowerCase().includes(search.toLowerCase()))
+    );
+
+    const totalPages = Math.ceil(filteredOwners.length / itemsPerPage);
+    const indexOfLastItem = currentPage * itemsPerPage;
+    const indexOfFirstItem = indexOfLastItem - itemsPerPage;
+    const currentItems = filteredOwners.slice(indexOfFirstItem, indexOfLastItem);
 
     return (
         <div className="min-h-screen w-full bg-gray-50 p-8 text-gray-800">
@@ -50,7 +58,10 @@ const DashboardOwners = () => {
                             type="text" 
                             placeholder="Buscar cliente, teléfono o email..." 
                             value={search}
-                            onChange={(e) => setSearch(e.target.value)}
+                            onChange={(e) => {
+                                setSearch(e.target.value);
+                                setCurrentPage(1); // Volver a la página 1 al buscar
+                            }}
                             className="px-4 py-2 border border-gray-200 rounded-lg w-full sm:w-64 focus:outline-none focus:ring-2 focus:ring-indigo-300 transition shadow-sm"
                         />
                         <button
@@ -64,28 +75,52 @@ const DashboardOwners = () => {
 
                 {showForm && <FormularioOwner onOwnerAdded={handleOwnerAdded} />}
 
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {owners
-                        .filter(o => 
-                            o.name.toLowerCase().includes(search.toLowerCase()) || 
-                            (o.telefono && o.telefono.includes(search)) || 
-                            (o.email && o.email.toLowerCase().includes(search.toLowerCase()))
-                        )
-                        .map((owner, index) => {
-                            const uniqueKey = owner.id ? `id-${owner.id}` : owner._id ? `_id-${owner._id}` : `idx-${index}-${owner.name}`;
-                            return (
-                                <OwnerCard
-                                    key={uniqueKey}
-                                    owner={owner}
-                                    onUpdateOwner={(updatedOwner) => handleUpdateOwner(updatedOwner, index)}
-                                />
-                            );
-                        })
-                    }
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+                    {currentItems.map((owner, index) => {
+                        // El índice real en el array original para el handleUpdateOwner
+                        const realIndex = indexOfFirstItem + index;
+                        const uniqueKey = owner.id ? `id-${owner.id}` : owner._id ? `_id-${owner._id}` : `idx-${realIndex}`;
+                        return (
+                            <OwnerCard
+                                key={uniqueKey}
+                                owner={owner}
+                                onUpdateOwner={(updatedOwner) => handleUpdateOwner(updatedOwner, realIndex)}
+                            />
+                        );
+                    })}
                 </div>
+
+                {/* Controles de Paginación */}
+                {totalPages > 1 && (
+                    <div className="flex justify-center items-center gap-4 mt-8 bg-white p-4 rounded-2xl shadow-sm border border-gray-100">
+                        <button
+                            disabled={currentPage === 1}
+                            onClick={() => setCurrentPage(prev => prev - 1)}
+                            className="px-4 py-2 bg-indigo-50 text-indigo-600 rounded-xl font-bold disabled:opacity-30 disabled:cursor-not-allowed hover:bg-indigo-100 transition"
+                        >
+                            Anterior
+                        </button>
+                        <span className="text-sm font-bold text-gray-500">
+                            Página <span className="text-indigo-600">{currentPage}</span> de {totalPages}
+                        </span>
+                        <button
+                            disabled={currentPage === totalPages}
+                            onClick={() => setCurrentPage(prev => prev + 1)}
+                            className="px-4 py-2 bg-indigo-50 text-indigo-600 rounded-xl font-bold disabled:opacity-30 disabled:cursor-not-allowed hover:bg-indigo-100 transition"
+                        >
+                            Siguiente
+                        </button>
+                    </div>
+                )}
+
+                {filteredOwners.length === 0 && !loading && (
+                    <div className="text-center py-20 text-gray-400 italic bg-white rounded-3xl border-2 border-dashed border-gray-100">
+                        No se han encontrado clientes con esos criterios.
+                    </div>
+                )}
             </div>
         </div>
     );
 };
 
-export default DashboardOwners;
+export default DashboardOwners;

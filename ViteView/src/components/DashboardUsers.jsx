@@ -9,13 +9,8 @@ const DashboardUsers = () => {
     const [loading, setLoading] = useState(true);
     const [isSubmitting, setIsSubmitting] = useState(false);
 
-    const [showForm, setShowForm] = useState(false);
-    const [formData, setFormData] = useState({
-        name: '',
-        email: '',
-        password: '',
-        role: 'recepcionista'
-    });
+    const [currentPage, setCurrentPage] = useState(1);
+    const itemsPerPage = 5;
 
     const fetchUsers = async () => {
         setLoading(true);
@@ -32,6 +27,12 @@ const DashboardUsers = () => {
     useEffect(() => {
         fetchUsers();
     }, []);
+
+    // Paginación
+    const totalPages = Math.ceil(users.length / itemsPerPage);
+    const indexOfLastItem = currentPage * itemsPerPage;
+    const indexOfFirstItem = indexOfLastItem - itemsPerPage;
+    const currentItems = users.slice(indexOfFirstItem, indexOfLastItem);
 
     const handleChange = (e) => {
         setFormData({...formData, [e.target.name]: e.target.value});
@@ -50,6 +51,7 @@ const DashboardUsers = () => {
             });
             setShowForm(false);
             setFormData({ name: '', email: '', password: '', role: 'recepcionista' });
+            setCurrentPage(1);
             fetchUsers();
         } catch (error) {
             let msg = 'Error creando usuario.';
@@ -137,45 +139,68 @@ const DashboardUsers = () => {
             {loading ? (
                 <div className="flex justify-center p-10"><FontAwesomeIcon icon={faSpinner} spin size="2x" className="text-indigo-200" /></div>
             ) : (
-                <div className="overflow-x-auto">
-                    <table className="w-full text-left border-collapse">
-                        <thead>
-                            <tr className="bg-gray-50 text-gray-500 uppercase text-xs tracking-wider border-b border-gray-200">
-                                <th className="p-4">Staff</th>
-                                <th className="p-4">Email de Acceso</th>
-                                <th className="p-4">Rol</th>
-                                <th className="p-4 text-center">Acciones</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {users.map(user => (
-                                <tr key={user.id} className="border-b border-gray-50 hover:bg-gray-50/50 transition">
-                                    <td className="p-4 font-bold text-gray-800">{user.name}</td>
-                                    <td className="p-4 text-gray-600">{user.email}</td>
-                                    <td className="p-4">
-                                        <span className={`px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider flex items-center w-max gap-2 ${
-                                            user.role === 'veterinario' ? 'bg-indigo-100 text-indigo-700' : 
-                                            user.role === 'asistente' ? 'bg-emerald-100 text-emerald-700' :
-                                            'bg-pink-100 text-pink-700'
-                                        }`}>
-                                            <FontAwesomeIcon icon={user.role === 'veterinario' ? faUserMd : faUserNurse} />
-                                            {user.role}
-                                        </span>
-                                    </td>
-                                    <td className="p-4 text-center">
-                                        <button 
-                                            onClick={() => handleDelete(user.id, user.name)}
-                                            className="text-red-400 hover:text-red-600 bg-red-50 hover:bg-red-100 p-2 rounded-lg transition"
-                                            title="Revocar acceso"
-                                        >
-                                            <FontAwesomeIcon icon={faTrash} />
-                                        </button>
-                                    </td>
+                <>
+                    <div className="overflow-x-auto">
+                        <table className="w-full text-left border-collapse">
+                            <thead>
+                                <tr className="bg-gray-50 text-gray-500 uppercase text-xs tracking-wider border-b border-gray-200">
+                                    <th className="p-4">Staff</th>
+                                    <th className="p-4">Email de Acceso</th>
+                                    <th className="p-4">Rol</th>
+                                    <th className="p-4 text-center">Acciones</th>
                                 </tr>
-                            ))}
-                        </tbody>
-                    </table>
-                </div>
+                            </thead>
+                            <tbody>
+                                {currentItems.map(user => (
+                                    <tr key={user.id} className="border-b border-gray-50 hover:bg-gray-50/50 transition">
+                                        <td className="p-4 font-bold text-gray-800">{user.name}</td>
+                                        <td className="p-4 text-gray-600">{user.email}</td>
+                                        <td className="p-4">
+                                            <span className={`px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider flex items-center w-max gap-2 ${
+                                                user.role === 'veterinario' ? 'bg-indigo-100 text-indigo-700' : 
+                                                user.role === 'asistente' ? 'bg-emerald-100 text-emerald-700' :
+                                                'bg-pink-100 text-pink-700'
+                                            }`}>
+                                                <FontAwesomeIcon icon={user.role === 'veterinario' ? faUserMd : faUserNurse} />
+                                                {user.role}
+                                            </span>
+                                        </td>
+                                        <td className="p-4 text-center">
+                                            <button 
+                                                onClick={() => handleDelete(user.id, user.name)}
+                                                className="text-red-400 hover:text-red-600 bg-red-50 hover:bg-red-100 p-2 rounded-lg transition"
+                                                title="Revocar acceso"
+                                            >
+                                                <FontAwesomeIcon icon={faTrash} />
+                                            </button>
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+
+                    {/* Controles de Paginación */}
+                    {totalPages > 1 && (
+                        <div className="flex justify-center items-center gap-4 mt-8">
+                            <button
+                                disabled={currentPage === 1}
+                                onClick={() => setCurrentPage(prev => prev - 1)}
+                                className="px-4 py-2 bg-gray-100 text-gray-600 rounded-lg font-bold disabled:opacity-30 hover:bg-gray-200 transition"
+                            >
+                                Anterior
+                            </button>
+                            <span className="text-sm font-bold text-gray-500">Página {currentPage} de {totalPages}</span>
+                            <button
+                                disabled={currentPage === totalPages}
+                                onClick={() => setCurrentPage(prev => prev + 1)}
+                                className="px-4 py-2 bg-gray-100 text-gray-600 rounded-lg font-bold disabled:opacity-30 hover:bg-gray-200 transition"
+                            >
+                                Siguiente
+                            </button>
+                        </div>
+                    )}
+                </>
             )}
         </div>
     );
