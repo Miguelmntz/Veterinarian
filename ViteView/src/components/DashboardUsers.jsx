@@ -8,7 +8,13 @@ const DashboardUsers = () => {
     const [users, setUsers] = useState([]);
     const [loading, setLoading] = useState(true);
     const [isSubmitting, setIsSubmitting] = useState(false);
-
+    const [showForm, setShowForm] = useState(false);
+    const [formData, setFormData] = useState({
+        name: '',
+        email: '',
+        password: '',
+        role: 'recepcionista'
+    });
     const [currentPage, setCurrentPage] = useState(1);
     const itemsPerPage = 5;
 

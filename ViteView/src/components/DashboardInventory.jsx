@@ -6,15 +6,13 @@ import { faBoxOpen, faPlus, faPills, faExclamationTriangle, faPencilAlt, faTrash
 import FormularioProducto from './FormularioProducto';
 
 const DashboardInventory = () => {
-    // Array tocho que contendrá todas mis cajas de material de almacén
     const [products, setProducts] = useState([]);
     const [loading, setLoading] = useState(true);
-
-    // Estados para controlar la ventana modal emergente de edición/creación
     const [isFormOpen, setIsFormOpen] = useState(false);
     const [editingProduct, setEditingProduct] = useState(null);
+    const [search, setSearch] = useState('');
     const [currentPage, setCurrentPage] = useState(1);
-    const itemsPerPage = 8; // En inventario caben más por ser tabla
+    const itemsPerPage = 8;
 
     // Nada más se monte mi componente Inventory, pido al Backend que me dé el catálogo actual en crudo
     useEffect(() => {

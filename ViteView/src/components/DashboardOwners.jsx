@@ -6,6 +6,10 @@ import FormularioOwner from './FormularioOwner';
 import OwnerCard from './OwnerCard';
 
 const DashboardOwners = () => {
+    const [owners, setOwners] = useState([]);
+    const [loading, setLoading] = useState(true);
+    const [showForm, setShowForm] = useState(false);
+    const [search, setSearch] = useState('');
     const [currentPage, setCurrentPage] = useState(1);
     const itemsPerPage = 6;
 
