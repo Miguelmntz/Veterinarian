@@ -1,7 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import api from '../api';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faPaw, faUsers, faBoxOpen, faCalendarDay, faExclamationTriangle, faSync } from '@fortawesome/free-solid-svg-icons';
+import { faPaw, faUsers, faBoxOpen, faCalendarDay, faExclamationTriangle, faSync, faChartLine, faChartPie } from '@fortawesome/free-solid-svg-icons';
+import { 
+    BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, 
+    PieChart, Pie, Cell 
+} from 'recharts';
+
+const COLORS = ['#4f46e5', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899'];
 
 const DashboardHome = ({ onNavigate }) => {
     const [metrics, setMetrics] = useState({
@@ -14,6 +20,10 @@ const DashboardHome = ({ onNavigate }) => {
     const [appointments, setAppointments] = useState([]);
     const [pendingAppointments, setPendingAppointments] = useState([]);
     const [lowStock, setLowStock] = useState([]);
+    const [chartData, setChartData] = useState({
+        appointments_weekly: [],
+        species_distribution: []
+    });
     const [loading, setLoading] = useState(true);
 
     const fetchDashboardData = async () => {
@@ -24,6 +34,7 @@ const DashboardHome = ({ onNavigate }) => {
             setAppointments(res.data.appointments_today);
             setLowStock(res.data.low_stock_products);
             setPendingAppointments(res.data.pending_appointments || []);
+            setChartData(res.data.charts || { appointments_weekly: [], species_distribution: [] });
         } catch (error) {
             console.error("Error fetching dashboard data", error);
         }
@@ -33,6 +44,10 @@ const DashboardHome = ({ onNavigate }) => {
     useEffect(() => {
         fetchDashboardData();
     }, []);
+
+    // Recuento exacto de alertas reales (críticas vs advertencia)
+    const criticalStockCount = lowStock.filter(p => p.stock_quantity === 0).length;
+    const warningStockCount = lowStock.filter(p => p.stock_quantity > 0 && p.stock_quantity <= 5).length;
 
     if (loading) {
         return (
@@ -46,18 +61,18 @@ const DashboardHome = ({ onNavigate }) => {
         <div className="flex-1 p-8 bg-gray-50 overflow-y-auto">
             <div className="flex justify-between items-center mb-8">
                 <div>
-                    <h1 className="text-3xl font-black text-gray-800 tracking-tight">Bienvenido a Veterinario Mmartin</h1>
-                    <p className="text-gray-500 mt-1">Resumen general de la clínica en tiempo real.</p>
+                    <h1 className="text-3xl font-black text-gray-800 tracking-tight">Panel de Control</h1>
+                    <p className="text-gray-500 mt-1 font-medium italic">Clínica Veterinaria Mmartin - Gestión Integral</p>
                 </div>
                 <button
                     onClick={fetchDashboardData}
                     className="flex items-center gap-2 bg-white border border-gray-200 text-gray-600 px-4 py-2 rounded-xl hover:bg-gray-100 hover:text-indigo-600 transition shadow-sm font-bold text-sm cursor-pointer"
                 >
-                    <FontAwesomeIcon icon={faSync} /> Actualizar Datos
+                    <FontAwesomeIcon icon={faSync} /> Sincronizar
                 </button>
             </div>
 
-            {/* FASE 7: Alerta Flash de Citas Remotas (Recepción / Vet) */}
+            {/* FASE 7: Alerta Flash de Citas Remotas */}
             {pendingAppointments.length > 0 && (
                 <div className="mb-8 bg-gradient-to-r from-orange-50 to-orange-100/50 border border-orange-200 rounded-2xl p-6 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
                     <div className="flex items-center gap-4">
@@ -65,15 +80,15 @@ const DashboardHome = ({ onNavigate }) => {
                             <FontAwesomeIcon icon={faExclamationTriangle} />
                         </div>
                         <div>
-                            <h3 className="text-lg font-bold text-orange-800 tracking-tight">Citas Pendientes de Aprobación</h3>
-                            <p className="text-orange-700 text-sm font-medium mt-0.5">Tienes <span className="font-black text-orange-900 bg-orange-200/50 px-2 py-0.5 rounded">{pendingAppointments.length}</span> solicitudes de clientes bloqueando el calendario que requieren asignación horaria.</p>
+                            <h3 className="text-lg font-bold text-orange-800 tracking-tight">Solicitudes Pendientes</h3>
+                            <p className="text-orange-700 text-sm font-medium mt-0.5">Tienes <span className="font-black text-orange-900 bg-orange-200/50 px-2 py-0.5 rounded">{pendingAppointments.length}</span> citas solicitadas por clientes que esperan tu confirmación.</p>
                         </div>
                     </div>
                     <button 
                         onClick={() => onNavigate && onNavigate('calendar')}
                         className="bg-orange-500 hover:bg-orange-600 text-white font-bold px-6 py-2.5 rounded-xl shadow-sm transition md:w-max w-full text-center whitespace-nowrap active:scale-95"
                     >
-                        Ir a Gestionarlas
+                        Gestionar Citas
                     </button>
                 </div>
             )}
@@ -128,9 +143,66 @@ const DashboardHome = ({ onNavigate }) => {
                     </div>
                     <div>
                         <p className="text-[11px] font-bold text-gray-400 uppercase tracking-widest mb-1">Alertas Stock</p>
-                        <p className={`text-3xl font-black leading-none ${metrics.low_stock_count > 0 ? 'text-red-600' : 'text-gray-800'}`}>{metrics.low_stock_count}</p>
+                        <div className="flex items-baseline gap-2">
+                            <p className={`text-3xl font-black leading-none ${metrics.low_stock_count > 0 ? 'text-red-600' : 'text-gray-800'}`}>{metrics.low_stock_count}</p>
+                            {criticalStockCount > 0 && <span className="text-[10px] bg-red-600 text-white px-1.5 py-0.5 rounded font-black">!</span>}
+                        </div>
                     </div>
                 </div>
+            </div>
+
+            {/* FASE GRÁFICOS: El toque Maestro para la Presentación */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-8">
+                
+                {/* Gráfico de Evolución de Citas */}
+                <div className="lg:col-span-2 bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
+                    <h3 className="text-lg font-bold text-gray-800 mb-6 flex items-center gap-2">
+                        <FontAwesomeIcon icon={faChartLine} className="text-indigo-500" /> Actividad de Citas (Última Semana)
+                    </h3>
+                    <div className="h-[250px] w-full">
+                        <ResponsiveContainer width="100%" height="100%">
+                            <BarChart data={chartData.appointments_weekly}>
+                                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
+                                <XAxis dataKey="day" axisLine={false} tickLine={false} tick={{fill: '#94a3b8', fontSize: 12}} />
+                                <YAxis axisLine={false} tickLine={false} tick={{fill: '#94a3b8', fontSize: 12}} />
+                                <Tooltip 
+                                    contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
+                                    cursor={{fill: '#f1f5f9'}}
+                                />
+                                <Bar dataKey="citas" fill="#4f46e5" radius={[4, 4, 0, 0]} barSize={40} />
+                            </BarChart>
+                        </ResponsiveContainer>
+                    </div>
+                </div>
+
+                {/* Gráfico de Distribución de Especies */}
+                <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
+                    <h3 className="text-lg font-bold text-gray-800 mb-6 flex items-center gap-2">
+                        <FontAwesomeIcon icon={faChartPie} className="text-pink-500" /> Pacientes por Especie
+                    </h3>
+                    <div className="h-[250px] w-full">
+                        <ResponsiveContainer width="100%" height="100%">
+                            <PieChart>
+                                <Pie
+                                    data={chartData.species_distribution}
+                                    cx="50%"
+                                    cy="50%"
+                                    innerRadius={60}
+                                    outerRadius={80}
+                                    paddingAngle={5}
+                                    dataKey="value"
+                                >
+                                    {chartData.species_distribution.map((entry, index) => (
+                                        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                                    ))}
+                                </Pie>
+                                <Tooltip />
+                                <Legend verticalAlign="bottom" height={36}/>
+                            </PieChart>
+                        </ResponsiveContainer>
+                    </div>
+                </div>
+
             </div>
 
             {/* Contenedores Grandes (Listas) */}
@@ -162,24 +234,25 @@ const DashboardHome = ({ onNavigate }) => {
                     )}
                 </div>
 
-                {/* Listado de Productos en peligro %} */}
+                {/* Listado de Productos en peligro */}
                 <div className="bg-white border border-gray-100 shadow-sm rounded-2xl p-6 flex flex-col">
                     <h3 className="text-lg font-bold text-gray-800 mb-5 flex items-center gap-2 border-b border-gray-100 pb-3">
                         <FontAwesomeIcon icon={faExclamationTriangle} className="text-red-500" /> Reposición Urgente
+                        {criticalStockCount > 0 && <span className="ml-auto bg-red-600 text-white text-[10px] px-2 py-1 rounded-full animate-bounce">¡Crítico: {criticalStockCount}!</span>}
                     </h3>
                     {lowStock.length === 0 ? (
                         <p className="text-sm text-gray-500 p-6 bg-gray-50 rounded-xl text-center border-2 border-dashed border-gray-200">Todo el inventario está sano. Ningún producto por debajo de 5 unidades.</p>
                     ) : (
                         <div className="space-y-3 overflow-y-auto flex-1 pr-2 custom-scrollbar">
                             {lowStock.map(p => (
-                                <div key={p.id} className="flex justify-between items-center p-4 bg-red-50/50 text-red-800 rounded-xl border border-red-100 hover:bg-red-50 transition">
+                                <div key={p.id} className={`flex justify-between items-center p-4 rounded-xl border transition ${p.stock_quantity === 0 ? 'bg-red-100 border-red-200 text-red-900' : 'bg-red-50/50 border-red-100 text-red-800 hover:bg-red-50'}`}>
                                     <div>
-                                        <p className="font-bold text-sm tracking-tight">{p.name}</p>
+                                        <p className="font-bold text-sm tracking-tight">{p.name} {p.stock_quantity === 0 && '🛑'}</p>
                                         <p className="text-xs opacity-70 mt-0.5">{p.description || "Sin descripción"}</p>
                                     </div>
                                     <div className="text-right flex flex-col items-end">
-                                        <span className="text-[10px] uppercase font-bold tracking-widest text-red-400 mb-1">Quedan</span>
-                                        <span className="font-black text-2xl leading-none bg-red-100 px-3 py-1 rounded-lg text-red-600 shadow-sm">{p.stock_quantity}</span>
+                                        <span className={`text-[10px] uppercase font-bold tracking-widest mb-1 ${p.stock_quantity === 0 ? 'text-red-700' : 'text-red-400'}`}>Quedan</span>
+                                        <span className={`font-black text-2xl leading-none px-3 py-1 rounded-lg shadow-sm ${p.stock_quantity === 0 ? 'bg-red-600 text-white' : 'bg-red-100 text-red-600'}`}>{p.stock_quantity}</span>
                                     </div>
                                 </div>
                             ))}

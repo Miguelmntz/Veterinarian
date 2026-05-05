@@ -25,7 +25,7 @@ class AppointmentController extends Controller
             'start_time' => 'required|date',
             'notes'      => 'nullable|string',
             'type'       => 'nullable|string',
-            'status'     => 'nullable|in:pending,scheduled,completed,cancelled'
+            'status'     => 'required|in:pending,scheduled,completed,cancelled'
         ]);
 
         // Verificamos si existe alguna cita a esa misma hora para evitar solapamientos (sólo si no es pendiente)
@@ -71,13 +71,20 @@ class AppointmentController extends Controller
             'start_time' => 'sometimes|date',
             'notes'      => 'nullable|string',
             'type'       => 'nullable|string',
-            'status'     => 'nullable|in:pending,scheduled,completed,cancelled'
+            'status'     => 'required|in:pending,scheduled,completed,cancelled'
         ]);
 
-        $status = $validated['status'] ?? $appointment->status;
-        if ($status !== 'pending') {
-            $startParsed = \Carbon\Carbon::parse($request->start_time)->format('Y-m-d H:i:s');
-            if (Appointment::where('start_time', $startParsed)->where('status', '!=', 'pending')->where('id', '!=', $appointment->id)->exists()) {
+        // Usamos el start_time del request o el que ya tiene la cita para la validación de solapamiento
+        $startTime = $request->start_time ?? $appointment->start_time;
+        $status = $validated['status'];
+
+        if ($status !== 'pending' && $status !== 'cancelled') {
+            $startParsed = \Carbon\Carbon::parse($startTime)->format('Y-m-d H:i:s');
+            if (Appointment::where('start_time', $startParsed)
+                ->where('status', '!=', 'pending')
+                ->where('status', '!=', 'cancelled')
+                ->where('id', '!=', $appointment->id)
+                ->exists()) {
                 return response()->json(['message' => 'Esta hora ya está reservada por otro paciente.'], 422);
             }
         }

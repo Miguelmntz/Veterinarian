@@ -117,6 +117,8 @@ const DashboardCalendar = () => {
     const eventStyleGetter = (event) => {
         let backgroundColor = '#4f46e5'; 
         if (event.resource.status === 'pending') backgroundColor = '#f97316';
+        if (event.resource.status === 'cancelled') backgroundColor = '#ef4444';
+        if (event.resource.status === 'completed') backgroundColor = '#10b981';
         return { style: { backgroundColor, borderRadius: '8px', border: 'none' } };
     };
 

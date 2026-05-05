@@ -7,9 +7,10 @@ Le informamos que su cita programada para **{{ $appointment->pet->name }}** el d
 
 Si cree que esto es un error o desea reprogramar su visita, por favor póngase en contacto con nosotros lo antes posible.
 
-<x-mail::button :url="config('app.frontend_url')">
-Volver al Portal
+<x-mail::button :url="'http://localhost:5173'">
+    Volver al Portal
 </x-mail::button>
 
-Atentamente, Mmartin Clínica Veterinaria<br>
+Saludos,<br>
+{{ config('app.name') }}
 </x-mail::message>

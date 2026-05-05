@@ -1,0 +1,19 @@
+# Ignorar archivos pesados que dan error en GitHub
+Documentos/Entrega_03_Mayo.zip
+
+# Otras exclusiones comunes
+node_modules/
+vendor/
+.env
+storage/*.key
+/public/storage
+/public/hot
+/public/build
+/storage/*.zip
+/storage/*.rar
+.phpunit.result.cache
+Homestead.json
+Homestead.yaml
+npm-debug.log
+yarn-error.log
+/.vscode

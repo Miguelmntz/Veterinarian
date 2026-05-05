@@ -12,8 +12,8 @@ class PetController extends Controller
      */
     public function index()
     {
-        // Recuperación de registros con carga anticipada (eager loading) de la relación 'owner'.
-        // Implementación requerida para mitigar el problema de consultas N+1 durante la renderización del frontend.
+        // Al recuperar todas las mascotas, llamo también a la relación 'owner' usando with().
+        // Esto evita el problema N+1 queries al renderizar las tablas en React (traigo dueño de una sola vez).
         return Pet::with('owner')->get();
     }
 
@@ -32,8 +32,6 @@ class PetController extends Controller
     //
     public function store(Request $request)
     {
-        // Definición de reglas de validación: Verificación de integridad referencial (exists:owners,id)
-        // y validación de campos obligatorios para prevenir excepciones a nivel de base de datos.
         $validated = $request->validate([
             'owner_id' => 'required|exists:owners,id',
             'name' => 'required|string',
@@ -41,7 +39,7 @@ class PetController extends Controller
             'raza' => 'nullable|string',
             'peso' => 'nullable|numeric',
             'fech_nac' => 'nullable|date',
-            'photo' => 'nullable|image|mimes:jpeg,png,jpg,webp|max:10240', // 10MB máximo
+            'photo' => 'nullable|image|mimes:jpeg,png,jpg,webp|max:2048',
         ]);
 
         if ($request->hasFile('photo')) {
@@ -49,10 +47,11 @@ class PetController extends Controller
             $validated['photo_path'] = $path;
         }
 
-        // Persistencia de la nueva entidad en la base de datos tras superar la validación.
+        // Quitamos 'photo' para evitar errores al crear el modelo en la BD
+        unset($validated['photo']);
+        
         $pet = Pet::create($validated);
 
-        // Respuesta JSON con la entidad generada y código de estado HTTP 201 (Created).
         return response()->json($pet, 201);
     }
 
@@ -77,7 +76,7 @@ class PetController extends Controller
      */
     public function update(Request $request, Pet $pet)
     {
-        // Validación integral del payload de actualización manteniendo las restricciones de integridad originales.
+        // Para la actualización exijo los mismos datos de validación básica por si los cambian.
         $validated = $request->validate([
             'owner_id' => 'required|exists:owners,id',
             'name' => 'required|string',
@@ -85,7 +84,7 @@ class PetController extends Controller
             'raza' => 'nullable|string',
             'peso' => 'nullable|numeric',
             'fech_nac' => 'nullable|date',
-            'photo' => 'nullable|image|mimes:jpeg,png,jpg,webp|max:10240',
+            'photo' => 'nullable|image|mimes:jpeg,png,jpg,webp|max:2048',
         ]);
 
         if ($request->hasFile('photo')) {
@@ -93,10 +92,13 @@ class PetController extends Controller
             $validated['photo_path'] = $path;
         }
 
-        // Actualización del registro en base de datos aprovechando la inyección implícita del modelo (Route Model Binding).
+        // Quitamos el objeto file para que no de guerra al actualizar el modelo.
+        unset($validated['photo']);
+
+        // Laravel se encarga de guardar los cambios en la BD con el objeto Model $pet recibido por Route Model Binding.
         $pet->update($validated);
 
-        // Respuesta JSON con la entidad actualizada y código de estado HTTP 200 (OK).
+        // Envío 200 (OK) en vez de 201 por ser una actualización.
         return response()->json($pet, 200);
     }
 
@@ -105,10 +107,17 @@ class PetController extends Controller
      */
     public function destroy(Pet $pet)
     {
-        // Eliminación del registro mediante el ORM Eloquent.
+        $owner = $pet->owner;
+        
+        // Borramos la mascota
         $pet->delete();
 
-        // Confirmación de eliminación exitosa mediante código de estado HTTP 204 (No Content).
+        // Lógica automática: Si el dueño ya no tiene más mascotas, lo borramos también a él
+        if ($owner && $owner->pets()->count() === 0) {
+            $owner->delete();
+            return response()->json(['message' => 'Mascota y dueño eliminados (dueño sin más mascotas)'], 200);
+        }
+
         return response()->json(null, 204);
     }
 }

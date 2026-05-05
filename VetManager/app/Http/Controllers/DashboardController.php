@@ -34,6 +34,31 @@ class DashboardController extends Controller
         // Alerta: productos que se están agotando físicamente en el almacén (<= 5 uds)
         $lowStockProducts = Product::where('stock_quantity', '<=', 5)->get();
 
+        // DATOS PARA GRÁFICOS
+        // 1. Citas por día (últimos 7 días)
+        $last7Days = [];
+        for ($i = 6; $i >= 0; $i--) {
+            $date = Carbon::today()->subDays($i);
+            $count = Appointment::whereDate('start_time', $date)
+                ->where('status', '!=', 'cancelled')
+                ->count();
+            $last7Days[] = [
+                'day' => $date->format('d/m'),
+                'citas' => $count
+            ];
+        }
+
+        // 2. Distribución de especies
+        $speciesStats = Pet::select('species', \DB::raw('count(*) as total'))
+            ->groupBy('species')
+            ->get()
+            ->map(function ($item) {
+                return [
+                    'name' => $item->species,
+                    'value' => $item->total
+                ];
+            });
+
         return response()->json([
             'metrics' => [
                 'total_pets' => Pet::count(),
@@ -44,7 +69,11 @@ class DashboardController extends Controller
             ],
             'appointments_today' => $appointmentsToday,
             'low_stock_products' => $lowStockProducts,
-            'pending_appointments' => $pendingAppointments
+            'pending_appointments' => $pendingAppointments,
+            'charts' => [
+                'appointments_weekly' => $last7Days,
+                'species_distribution' => $speciesStats
+            ]
         ], 200);
     }
 }

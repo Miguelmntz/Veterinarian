@@ -97,9 +97,9 @@
 
     <div class="header">
         <div class="company-info">
-            <h1>Mmartin Clínica Veterinaria</h1>
+            <h1>Veterinario Mmartin Clínica Veterinaria</h1>
             <p>Calle del Cuidado Animal, 123</p>
-            <p>Almeria, 04002</p>
+            <p>Madrid, 28000</p>
             <p>CIF: B-12345678</p>
         </div>
         <div class="invoice-info">
@@ -126,7 +126,7 @@
         </thead>
         <tbody>
             <tr>
-                <td>Consulta Veterinaria Estándar <br><small>{{ $record->diagnosis }}</small></td>
+                <td>Consulta Veterinaria Estándar <br><small>Motivo diagnóstico: {{ $record->diagnosis }}</small></td>
                 <td style="text-align: right;">{{ number_format($consultationFee, 2) }} &euro;</td>
             </tr>
             @if($product)
@@ -154,7 +154,7 @@
     </table>
 
     <div class="footer">
-        <p>Gracias por confiar la salud de {{ $pet->name }} a Mmartin Clínica Veterinaria.</p>
+        <p>Gracias por confiar la salud de {{ $pet->name }} a Veterinario Mmartin Clínica Veterinaria.</p>
         <p>El pago debe realizarse antes de 15 días tras la emisión de la factura.</p>
     </div>
 

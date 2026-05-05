@@ -28,7 +28,12 @@ const DashboardOwners = () => {
     };
 
     const handleUpdateOwner = (updatedOwner, updatedIndex) => {
-        setOwners(owners.map((o, i) => i === updatedIndex ? updatedOwner : o));
+        if (updatedOwner === null) {
+            // Si llega null, es porque el dueño ha sido eliminado
+            setOwners(owners.filter((_, i) => i !== updatedIndex));
+        } else {
+            setOwners(owners.map((o, i) => i === updatedIndex ? updatedOwner : o));
+        }
     };
 
     if (loading) return <div className="p-20 text-center font-bold">Cargando...</div>;

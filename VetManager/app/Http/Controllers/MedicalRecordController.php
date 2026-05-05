@@ -10,42 +10,42 @@ use App\Mail\MedicalVisitSummary;
 
 class MedicalRecordController extends Controller
 {
-    // Recupera todos los registros médicos asociados a una mascota específica (utilizado en la vista de ficha de paciente)
+    // Me traigo todas las consultas de una mascota concreta (útil para la ficha del paciente)
     public function index(Request $request)
     {
-        // Filtrado condicional: si se proporciona 'pet_id', se restringe la consulta; de lo contrario, retorna la colección completa
-        // Nota arquitectónica: En el flujo estándar de la aplicación siempre se aplicará este filtro
+        // Si me pasan pet_id recojo solo las de esa mascota, si no, me las traigo todas
+        // (aunque en la vida real siempre filtraré por paciente)
         $query = MedicalRecord::query();
         if ($request->has('pet_id')) {
             $query->where('pet_id', $request->pet_id);
         }
         
-        // Retorna la colección ordenada cronológicamente de forma descendente,
-        // incluyendo las relaciones 'pet' y 'product' mediante eager loading
+        // Las devuelvo ordenadas de más reciente a más antigua
+        // Y precargo a la mascota y al producto consumido (si hubiese alguno)
         return response()->json($query->with(['pet', 'product'])->orderBy('created_at', 'desc')->get());
     }
 
-    // Almacenar nuevo registro médico y procesar el archivo adjunto
+    // El gordo: Guardar una nueva consulta clínica y procesar el archivo adjunto
     public function store(Request $request)
     {
-        // Procesamiento de la petición: Se espera un objeto FormData desde el frontend para soportar subida de archivos
-        // La validación retornará un código HTTP 422 en caso de incumplir las reglas definidas
+        // En vez de un JSON típico, esto me va a llegar como FormData desde React porque lleva un archivo
+        // El validate de Laravel escupirá un 422 si falla algo, ideal.
         $validated = $request->validate([
             'pet_id' => 'required|exists:pets,id',
             'product_id' => 'nullable|exists:products,id',
             'symptom_title' => 'required|string|max:255',
             'diagnosis' => 'nullable|string',
             'treatment' => 'nullable|string',
-            // El archivo adjunto es opcional. Formatos admitidos: imagen o PDF. Tamaño máximo: 10MB
-            'attachment' => 'nullable|file|mimes:jpeg,png,jpg,webp,pdf|max:10240', 
+            // El archivo es opcional, puede ser imagen o pdf. Max 10 megas.
+            'attachment' => 'nullable|file|mimes:jpeg,png,jpg,pdf|max:10240', 
         ]);
 
-        // Integración con el módulo de control de inventario:
+        // INTEGRAMOS MÓDULO INVENTARIO AQUÍ MISMO A PELO:
         if (!empty($validated['product_id'])) {
             $productoGastado = \App\Models\Product::find($validated['product_id']);
-            // Verificación de disponibilidad de stock previo a la deducción
+            // Chequeo si me intentan colar poner una inyección de algo que no queda
             if ($productoGastado && $productoGastado->stock_quantity > 0) {
-                // Deducción de una unidad de stock en la base de datos
+                // Resto 1 de stock mecánicamente directo a base de datos de manera súper simple
                 $productoGastado->decrement('stock_quantity', 1);
             } else {
                 return response()->json(['message' => 'Lógica física fallida: No queda stock de este producto disponible en la estantería actual.'], 400);
@@ -60,21 +60,21 @@ class MedicalRecordController extends Controller
             'treatment' => $validated['treatment'] ?? null,
         ];
 
-        // Lógica de procesamiento y almacenamiento de archivos adjuntos
+        // Lógica de manipulación de ficheros
         if ($request->hasFile('attachment')) {
             $file = $request->file('attachment');
             
-            // Almacenamiento en disco local: 'storage/app/public/medical_attachments' 
-            // Requiere la configuración previa del enlace simbólico mediante 'php artisan storage:link' para accesibilidad pública
+            // Lo guardo en local_storage: 'storage/app/public/medical_attachments' 
+            // Cuidado! Tuve que ejecutar 'php artisan storage:link' en la powershell para que React pudiera leer estas fotos.
             $path = $file->store('medical_attachments', 'public');
             
             $recordData['attachment_path'] = $path;
             
-            // Registro del tipo MIME del archivo adjunto para su posterior renderizado
+            // Qué tipo de archivo estamos manejando (image/png, application/pdf...)
             $recordData['attachment_type'] = $file->getClientMimeType(); 
         }
 
-        // Persistencia del registro médico en la base de datos
+        // Metemos el chisme a la base de datos
         $record = MedicalRecord::create($recordData);
 
         // ENVIAR NOTIFICACIÓN AUTOMÁTICA AL DUEÑO
@@ -90,20 +90,20 @@ class MedicalRecordController extends Controller
         return response()->json($record, 201);
     }
 
-    // Recupera un registro médico específico por su identificador (preparado para vistas detalladas individuales)
+    // Para ver una entrada sola (Por si acaso luego la uso en alguna vista en detalle)
     public function show($id)
     {
         $medicalRecord = MedicalRecord::with(['pet', 'product'])->findOrFail($id);
         return response()->json($medicalRecord);
     }
 
-    // Elimina permanentemente un registro médico y su archivo adjunto asociado del sistema de almacenamiento
+    // Borrar una historia clínica entera (y pulverizar su archivo adjunto para no saturar el servidor inútilmente)
     public function destroy($id)
     {
         $medicalRecord = MedicalRecord::findOrFail($id);
         
         if ($medicalRecord->attachment_path) {
-            // Eliminación física del archivo en el disco local para optimizar el espacio de almacenamiento del servidor
+            // Borro físicamente la foto/pdf del disco duro local si tenía una. ¡Esto es vital para no inflar la app!
             Storage::disk('public')->delete($medicalRecord->attachment_path);
         }
 
