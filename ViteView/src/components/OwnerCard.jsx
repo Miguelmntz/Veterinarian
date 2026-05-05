@@ -91,27 +91,6 @@ const OwnerCard = ({ owner, onUpdateOwner }) => {
 
     // --- FUNCIONES DE DUEÑO ---
 
-    const handleDeleteOwner = async () => {
-        const result = await Swal.fire({
-            title: '¿Eliminar Cliente?',
-            text: "Se borrarán también todas sus mascotas y citas. Esta acción es definitiva.",
-            icon: 'error',
-            showCancelButton: true,
-            confirmButtonColor: '#ef4444',
-            confirmButtonText: 'Sí, borrar todo'
-        });
-
-        if (result.isConfirmed) {
-            try {
-                await api.delete(`/owners/${owner.id || owner._id}`);
-                onUpdateOwner(null);
-                Swal.fire('Eliminado', 'Cliente eliminado correctamente', 'success');
-            } catch (error) {
-                Swal.fire('Error', 'No se pudo eliminar el cliente', 'error');
-            }
-        }
-    };
-
     const handleSaveOwner = async () => {
         try {
             const res = await api.put(`/owners/${owner.id || owner._id}`, ownerEdicion);
@@ -146,9 +125,6 @@ const OwnerCard = ({ owner, onUpdateOwner }) => {
                 <div className="flex gap-2">
                     <button onClick={openEditOwner} className="text-gray-300 hover:text-indigo-600 transition p-1" title="Editar Cliente">
                         <FontAwesomeIcon icon={faPencilAlt} />
-                    </button>
-                    <button onClick={handleDeleteOwner} className="text-gray-200 hover:text-red-500 transition p-1" title="Eliminar Cliente">
-                        <FontAwesomeIcon icon={faTrashAlt} />
                     </button>
                 </div>
             </div>

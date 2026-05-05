@@ -31,8 +31,8 @@ class DashboardController extends Controller
             ->orderBy('start_time', 'asc')
             ->get();
 
-        // Alerta: productos que se están agotando físicamente en el almacén (<= 5 uds)
-        $lowStockProducts = Product::where('stock_quantity', '<=', 5)->get();
+        // Alerta: productos con stock igual o inferior a su alerta personalizada
+        $lowStockProducts = Product::whereColumn('stock_quantity', '<=', 'min_stock_alert')->get();
 
         // DATOS PARA GRÁFICOS
         // 1. Citas por día (últimos 7 días)
